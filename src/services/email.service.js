@@ -73,9 +73,40 @@ async function sendRegistrationEmail(userEmail, name) {
 
     await sendEmail(userEmail, subject, text, html);
 }
+async function sendTransactionEmail(userEmail, name, amount, toAccount,) {
+    const subject = "Transaction Alert 🚨";
+    const text = `Hello ${name}, a transaction has been made on your account. Details: ${transactionDetails}.`;
+    const html = `
+      <div style="font-family: Arial; background:#f4f4f4; padding:20px;">
+        <div style="max-width:600px; margin:auto; background:white; border-radius:10px; overflow:hidden;">
+          
+          <div style="background:#111827; color:white; padding:20px; text-align:center;">
+            <h1>Transaction Alert 🚨</h1>
+          </div>
 
+          <div style="padding:20px;">
+            <h2>Hello ${name}, 👋</h2>
+            <p>A transaction has been made on your account.</p>
+            <p><strong>Amount:</strong> ${amount}</p>
+            <p><strong>To Account:</strong> ${toAccount}</p>
+          </div>
+        </div>
+      </div>
+    `;
+    await sendEmail(userEmail, subject, text, html);
+}
 
+async function sendTransactionFailureEmail(userEmail, name, amount, toAccount) {
+    const subject = "Transaction Alert 🚨";
+    const text = `Hello ${name}, a transaction has failed on your account. Details: ${transactionDetails}.`;
+    const html = `
+      <div style="font-family: Arial; background:#f4f4f4; padding:20px;">
+        <div style="max-width:600px; margin:auto; background:white; border-radius:10px; overflow:hidden;">`
 
-module.exports = {sendRegistrationEmail };
-
-
+    await sendEmail(userEmail, subject, text, html);
+}
+module.exports = {
+     sendRegistrationEmail,
+     sendTransactionEmail,
+     sendTransactionFailureEmail
+    };

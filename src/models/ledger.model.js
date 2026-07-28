@@ -1,7 +1,4 @@
 const mongoose =require('mongoose');
-const { type } = require('node:os');
-const transactionModel = require('./transaction.model');
-const { REFUSED } = require('node:dns');
 
 const ledgerSchema = new mongoose.Schema({
     account:{
@@ -39,13 +36,13 @@ function preventLedgerModification() {
     throw new Error("Ledger entries cannot be modified or deleted.");
 }
 
-legerSchema.pre('updateOne', preventLedgerModification);
-legerSchema.pre('deleteOne', preventLedgerModification);
-legerSchema.pre('findOneAndUpdate', preventLedgerModification);
-legerSchema.pre('findOneAndDelete', preventLedgerModification);
-legerSchema.pre('remove', preventLedgerModification);
-legerSchema.pre('deleteMany', preventLedgerModification);
-legerSchema.pre('updateMany', preventLedgerModification);
+ledgerSchema.pre('updateOne', preventLedgerModification);
+ledgerSchema.pre('deleteOne', preventLedgerModification);
+ledgerSchema.pre('findOneAndUpdate', preventLedgerModification);
+ledgerSchema.pre('findOneAndDelete', preventLedgerModification);
+ledgerSchema.pre('remove', preventLedgerModification);
+ledgerSchema.pre('deleteMany', preventLedgerModification);
+ledgerSchema.pre('updateMany', preventLedgerModification);
 
 const ledgerModel = mongoose.model("ledger",ledgerSchema)
 
