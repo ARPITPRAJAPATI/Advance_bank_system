@@ -2,6 +2,9 @@ const { CommandFailedEvent } = require("mongodb")
 const userModel = require("../models/user.model")
 const jwt = require("jsonwebtoken"); 
 const emailService = require("../services/email.service")
+const tokenblacklistModel = require("../models/blackList.model");
+const tokenBlacklistModel = require("../models/blackList.model");
+
 
 async function userRegisterController(req,res){
     const {email,password,name} = req.body
@@ -37,6 +40,7 @@ async function userRegisterController(req,res){
     })
     await emailService.sendRegistrationEmail(user.email,user.name)
 }
+
 async function userLoginController(req,res){
     const {email,password} = req.body
 
@@ -69,8 +73,29 @@ async function userLoginController(req,res){
           name : user.name
         }
     })
+};
+
+
+async function userLogoutController(req,res){
+     const token = req.cookies.token || 
+        (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+
+     if(!token){
+         return res.status(401).json({message: "unAuth user , token is missing"})
+     }
+     res.cookie("token","")
+
+     await tokenBlacklistModel.create({
+        token: token
+     })
+     res.status(200).json({
+        message: "user logged out"
+     })
 }
+
+
 module.exports ={
     userRegisterController,
-    userLoginController
+    userLoginController,
+    userLogoutController
 }
