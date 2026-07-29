@@ -83,7 +83,7 @@ async function userLogoutController(req,res){
      if(!token){
          return res.status(401).json({message: "unAuth user , token is missing"})
      }
-     res.cookie("token","")
+     res.clearCookie("token");
 
      await tokenBlacklistModel.create({
         token: token
