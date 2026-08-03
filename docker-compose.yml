@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    container_name: backend-app
+
+    ports:
+      - "3000:3000"
+
+    env_file:
+      - .env.docker
+
+    restart: always
