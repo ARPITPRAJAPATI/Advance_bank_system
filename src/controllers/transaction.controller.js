@@ -212,4 +212,34 @@ async function createInitialFundsTransaction(req,res) {
 
 } 
 
-module.exports = {createTransaction,createInitialFundsTransaction}
+async function getUserTransactions(req, res) {
+    try {
+        const accounts = await accountModel.find({ user: req.user._id });
+        const accountIds = accounts.map(acc => acc._id);
+
+        const transactions = await transactionModel.find({
+            $or: [
+                { fromAccount: { $in: accountIds } },
+                { toAccount: { $in: accountIds } }
+            ]
+        })
+        .sort({ createdAt: -1 })
+        .populate('fromAccount')
+        .populate('toAccount');
+
+        return res.status(200).json({
+            transactions
+        });
+    } catch (err) {
+        return res.status(500).json({
+            message: "Failed to fetch transactions",
+            error: err.message
+        });
+    }
+}
+
+module.exports = {
+    createTransaction,
+    createInitialFundsTransaction,
+    getUserTransactions
+}

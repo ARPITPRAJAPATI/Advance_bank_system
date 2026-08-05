@@ -7,38 +7,53 @@ const tokenBlacklistModel = require("../models/blackList.model");
 
 
 async function userRegisterController(req,res){
-    const {email,password,name} = req.body
-    
-    const isExists = await userModel.findOne({
-        email: email
-    })
-
-    if(isExists){
-        return res.status(422).json({
-            message: "user already exists",
-            status: "failed"
+    try {
+        const {email,password,name} = req.body
+        
+        const isExists = await userModel.findOne({
+            email: email
         })
-    }
-    const user = await userModel.create({
-        email,password,name
-    })
 
-    const token = jwt.sign({
-        userId: user._id,
-       
-    }, process.env.JWT_SECRET,{expiresIn:"3d"})
-
-    res.cookie("token", token)
-    
-    res.status(201).json({
-        message: "user registered",
-        user:{
-          _id: user._id,
-          email  : user.email,
-          name : user.name
+        if(isExists){
+            return res.status(422).json({
+                message: "user already exists",
+                status: "failed"
+            })
         }
-    })
-    await emailService.sendRegistrationEmail(user.email,user.name)
+        const isFirstUser = (await userModel.countDocuments({})) === 0;
+        const user = await userModel.create({
+            email,password,name,
+            systemUser: isFirstUser
+        })
+
+        const token = jwt.sign({
+            userId: user._id,
+           
+        }, process.env.JWT_SECRET,{expiresIn:"3d"})
+
+        res.cookie("token", token)
+        
+        res.status(201).json({
+            message: "user registered",
+            user:{
+              _id: user._id,
+              email  : user.email,
+              name : user.name,
+              systemUser: user.systemUser
+            }
+        })
+        try {
+            await emailService.sendRegistrationEmail(user.email,user.name)
+        } catch (emailErr) {
+            console.error("Non-blocking email registration error:", emailErr);
+        }
+    } catch (err) {
+        console.error("Registration error:", err);
+        return res.status(400).json({
+            message: "Registration failed",
+            error: err.message
+        });
+    }
 }
 
 async function userLoginController(req,res){
@@ -70,7 +85,8 @@ async function userLoginController(req,res){
         user:{
           _id: user._id,
           email  : user.email,
-          name : user.name
+          name : user.name,
+          systemUser: user.systemUser
         }
     })
 };
