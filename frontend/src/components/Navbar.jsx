@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 
-/**
- * Nova Pay — Quiet Luxury Minimalist Navbar
- */
 export default function Navbar({ isAuthenticated = false, onLogout }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -13,7 +10,7 @@ export default function Navbar({ isAuthenticated = false, onLogout }) {
     <header className="sticky top-0 z-50 w-full bg-[#0A0C10]/80 backdrop-blur-xl border-b border-white/[0.08]">
       <div className="max-w-7xl mx-auto px-6 sm:px-10 h-20 flex items-center justify-between">
         
-        {/* Left: Brand Logo (Without 'by trio') */}
+        {/* Brand Logo */}
         <Link to="/" className="flex items-center gap-2 group">
           <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-sm group-hover:border-white/20 transition-all">
             ✦
@@ -23,7 +20,7 @@ export default function Navbar({ isAuthenticated = false, onLogout }) {
           </span>
         </Link>
 
-        {/* Right: Nav Links + Quiet Luxury Pill Buttons */}
+        {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-8">
           <Link to="/" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
             About
@@ -36,7 +33,7 @@ export default function Navbar({ isAuthenticated = false, onLogout }) {
             <>
               <button 
                 onClick={() => navigate('/dashboard')}
-                className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                className="text-sm font-medium text-slate-300 hover:text-white transition-colors cursor-pointer"
               >
                 Dashboard
               </button>
@@ -51,7 +48,7 @@ export default function Navbar({ isAuthenticated = false, onLogout }) {
             <>
               <button 
                 onClick={() => navigate('/login')}
-                className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                className="text-sm font-medium text-slate-300 hover:text-white transition-colors cursor-pointer"
               >
                 Sign In
               </button>
@@ -68,13 +65,13 @@ export default function Navbar({ isAuthenticated = false, onLogout }) {
         {/* Mobile Toggle */}
         <button 
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden p-2 text-slate-300 hover:text-white"
+          className="md:hidden p-2 text-slate-300 hover:text-white cursor-pointer"
         >
           {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-[#0A0C10] border-b border-white/10 px-6 py-6 space-y-4">
           <Link 
@@ -95,7 +92,7 @@ export default function Navbar({ isAuthenticated = false, onLogout }) {
             {isAuthenticated ? (
               <button 
                 onClick={() => { navigate('/dashboard'); setMobileMenuOpen(false); }}
-                className="w-full py-3 rounded-full bg-white text-slate-950 font-semibold text-sm"
+                className="w-full py-3 rounded-full bg-white text-slate-950 font-semibold text-sm cursor-pointer"
               >
                 Go to Dashboard
               </button>
@@ -103,13 +100,13 @@ export default function Navbar({ isAuthenticated = false, onLogout }) {
               <>
                 <button 
                   onClick={() => { navigate('/login'); setMobileMenuOpen(false); }}
-                  className="w-full py-2.5 rounded-full border border-white/20 text-white font-medium text-sm"
+                  className="w-full py-2.5 rounded-full border border-white/20 text-white font-medium text-sm cursor-pointer"
                 >
                   Sign In
                 </button>
                 <button 
                   onClick={() => { navigate('/register'); setMobileMenuOpen(false); }}
-                  className="w-full py-3 rounded-full bg-white text-slate-950 font-semibold text-sm"
+                  className="w-full py-3 rounded-full bg-white text-slate-950 font-semibold text-sm cursor-pointer"
                 >
                   Open Account
                 </button>

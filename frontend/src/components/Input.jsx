@@ -1,13 +1,5 @@
 import React from 'react';
 
-/**
- * Reusable Form Input Component
- * 
- * Concept Explanation for Learning:
- * - Controlled input helper that seamlessly displays labels, inline error messages, and icons.
- * - `error`: When an error string is provided (e.g. "Password is required"), it highlights the border in subtle red and renders error text.
- * - `icon`: Left-aligned icon support for clean form UX.
- */
 export default function Input({
   label,
   error,
@@ -28,7 +20,6 @@ export default function Input({
 
   return (
     <div className={`flex flex-col gap-1.5 w-full text-left ${className}`}>
-      {/* Field Label */}
       {label && (
         <label htmlFor={inputId} className="text-xs font-medium text-slate-300 tracking-wide flex items-center justify-between">
           <span>
@@ -37,7 +28,6 @@ export default function Input({
         </label>
       )}
 
-      {/* Input Field Wrapper */}
       <div className="relative flex items-center">
         {Icon && (
           <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center">
@@ -69,9 +59,8 @@ export default function Input({
         />
       </div>
 
-      {/* Inline Error Message or Helper Text */}
       {error ? (
-        <span className="text-xs text-red-400 font-medium tracking-tight animate-fade-in">
+        <span className="text-xs text-red-400 font-medium">
           {error}
         </span>
       ) : helperText ? (

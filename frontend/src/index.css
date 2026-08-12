@@ -1,30 +1,14 @@
-/* 
-  ==================================================================
-  NOVA PAY — QUIET LUXURY MINIMALIST DESIGN SYSTEM & 3D MOTION
-  Palette: Matte Dark Charcoal (#0A0C10) + Off-White (#FFFFFF) + Silver Slate (#94A3B8)
-  Style: Pure Swiss Minimalist Luxury (Apple / Linear level minimalism)
-  ==================================================================
-*/
-
 @import "tailwindcss";
 
 @layer base {
   :root {
-    --bg-primary: #0A0C10;            /* Matte Dark Charcoal */
-    --bg-surface: #12161F;            /* Glass Card Surface */
-    --bg-surface-hover: #1A202C;      /* Hover Surface */
-    --bg-glass: rgba(18, 22, 31, 0.75);
-
-    --accent-primary: #FFFFFF;        /* Pure White */
-    --accent-secondary: #94A3B8;      /* Silver Slate */
-    --accent-glow: rgba(255, 255, 255, 0.06);
-
-    --text-primary: #F8FAFC;          /* High-contrast Headings */
-    --text-secondary: #94A3B8;        /* Muted Subtitles */
-    --text-muted: #64748B;            /* Helper Text */
-
+    --bg-primary: #0A0C10;
+    --bg-surface: #12161F;
+    --bg-surface-hover: #1A202C;
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
     --border-glass: rgba(255, 255, 255, 0.08);
-    --border-hover: rgba(255, 255, 255, 0.16);
   }
 
   body {
@@ -37,13 +21,12 @@
   }
 }
 
-/* 3D Motion Keyframe Animations */
 @keyframes float3D {
   0%, 100% {
-    transform: translateY(0px) rotateX(0deg) rotateZ(0deg);
+    transform: translateY(0px) rotateX(0deg);
   }
   50% {
-    transform: translateY(-14px) rotateX(4deg) rotateZ(-1deg);
+    transform: translateY(-12px) rotateX(3deg);
   }
 }
 
@@ -52,18 +35,7 @@
     transform: translateY(0px) rotateZ(-6deg);
   }
   50% {
-    transform: translateY(-10px) rotateZ(-4deg);
-  }
-}
-
-@keyframes pulseGlow {
-  0%, 100% {
-    opacity: 0.4;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.7;
-    transform: scale(1.08);
+    transform: translateY(-8px) rotateZ(-4deg);
   }
 }
 
@@ -75,11 +47,6 @@
   animation: floatCard 5s ease-in-out infinite;
 }
 
-.animate-pulse-glow {
-  animation: pulseGlow 4s ease-in-out infinite;
-}
-
-/* Custom Minimalist Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
