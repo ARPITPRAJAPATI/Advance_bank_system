@@ -5,15 +5,16 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('nova_pay_user');
+    const savedUser = localStorage.getItem('navya_pay_user') || localStorage.getItem('nova_pay_user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
-      localStorage.setItem('nova_pay_user', JSON.stringify(user));
+      localStorage.setItem('navya_pay_user', JSON.stringify(user));
     } else {
+      localStorage.removeItem('navya_pay_user');
       localStorage.removeItem('nova_pay_user');
     }
   }, [user]);
@@ -48,6 +49,7 @@ export function AuthProvider({ children }) {
       console.warn('Logout API error:', err);
     } finally {
       setUser(null);
+      localStorage.removeItem('navya_pay_user');
       localStorage.removeItem('nova_pay_user');
       setLoading(false);
     }

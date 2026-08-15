@@ -25,7 +25,7 @@ transporter.verify((error, success) => {
 const sendEmail = async (to, subject, text, html) => {
   try {
     const info = await transporter.sendMail({
-      from: `"advance_backend" <${process.env.EMAIL_USER}>`, // sender address
+      from: `"Navya Pay" <${process.env.EMAIL_USER}>`, // sender address
       to, // list of receivers
       subject, // Subject line
       text, // plain text body
@@ -40,16 +40,16 @@ const sendEmail = async (to, subject, text, html) => {
 };
 
 async function sendRegistrationEmail(userEmail, name) {
-    const subject = "Welcome to Advance Backend 🚀";
+    const subject = "Welcome to Navya Pay 🚀";
 
-    const text = `Hello ${name}, thank you for registering on our platform.`;
+    const text = `Hello ${name}, thank you for registering on Navya Pay.`;
 
     const html = `
     <div style="font-family: Arial; background:#f4f4f4; padding:20px;">
       <div style="max-width:600px; margin:auto; background:white; border-radius:10px; overflow:hidden;">
         
         <div style="background:#111827; color:white; padding:20px; text-align:center;">
-          <h1>Welcome 🚀</h1>
+          <h1>Welcome to Navya Pay 🚀</h1>
         </div>
 
         <div style="padding:20px;">
@@ -58,13 +58,13 @@ async function sendRegistrationEmail(userEmail, name) {
           <p>We’re excited to have you on board 🎉</p>
 
           <div style="text-align:center; margin:20px;">
-            <a href="http://localhost:5173"
+            <a href="http://localhost:8000"
               style="background:#4f46e5; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">
               Get Started
             </a>
           </div>
 
-          <p>Cheers,<br><b>Advance Backend Team</b></p>
+          <p>Cheers,<br><b>Navya Pay Team</b></p>
         </div>
 
       </div>
@@ -73,9 +73,9 @@ async function sendRegistrationEmail(userEmail, name) {
 
     await sendEmail(userEmail, subject, text, html);
 }
-async function sendTransactionEmail(userEmail, name, amount, toAccount,) {
-    const subject = "Transaction Alert 🚨";
-    const text = `Hello ${name}, a transaction has been made on your account. Details: ${transactionDetails}.`;
+async function sendTransactionEmail(userEmail, name, amount, toAccount) {
+    const subject = "Navya Pay Transaction Alert 🚨";
+    const text = `Hello ${name}, a transaction of ₹${amount} has been made to account ${toAccount}.`;
     const html = `
       <div style="font-family: Arial; background:#f4f4f4; padding:20px;">
         <div style="max-width:600px; margin:auto; background:white; border-radius:10px; overflow:hidden;">
@@ -87,7 +87,7 @@ async function sendTransactionEmail(userEmail, name, amount, toAccount,) {
           <div style="padding:20px;">
             <h2>Hello ${name}, 👋</h2>
             <p>A transaction has been made on your account.</p>
-            <p><strong>Amount:</strong> ${amount}</p>
+            <p><strong>Amount:</strong> ₹${amount}</p>
             <p><strong>To Account:</strong> ${toAccount}</p>
           </div>
         </div>
@@ -97,16 +97,24 @@ async function sendTransactionEmail(userEmail, name, amount, toAccount,) {
 }
 
 async function sendTransactionFailureEmail(userEmail, name, amount, toAccount) {
-    const subject = "Transaction Alert 🚨";
-    const text = `Hello ${name}, a transaction has failed on your account. Details: ${transactionDetails}.`;
+    const subject = "Navya Pay Transaction Alert 🚨";
+    const text = `Hello ${name}, a transaction of ₹${amount} has failed.`;
     const html = `
       <div style="font-family: Arial; background:#f4f4f4; padding:20px;">
-        <div style="max-width:600px; margin:auto; background:white; border-radius:10px; overflow:hidden;">`
+        <div style="max-width:600px; margin:auto; background:white; border-radius:10px; overflow:hidden;">
+          <div style="padding:20px;">
+            <h2>Transaction Failed</h2>
+            <p>Your transfer of ₹${amount} to account ${toAccount} could not be completed.</p>
+          </div>
+        </div>
+      </div>
+    `;
 
     await sendEmail(userEmail, subject, text, html);
 }
+
 module.exports = {
      sendRegistrationEmail,
      sendTransactionEmail,
      sendTransactionFailureEmail
-    };
+};

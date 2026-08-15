@@ -16,7 +16,7 @@ export default function Navbar({ isAuthenticated = false, onLogout }) {
             ✦
           </div>
           <span className="text-2xl font-bold tracking-tight text-white">
-            nova<span className="text-slate-400 font-light">Pay</span>
+            navya<span className="text-slate-400 font-light">Pay</span>
           </span>
         </Link>
 

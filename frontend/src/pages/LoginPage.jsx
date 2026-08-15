@@ -58,7 +58,7 @@ export default function LoginPage() {
           <div className="w-12 h-12 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-white text-xl font-bold mx-auto mb-3">
             ✦
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Sign In to novaPay</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Sign In to Navya Pay</h1>
           <p className="text-sm text-slate-400 mt-1">Enter your credentials to access your banking account</p>
         </div>
 
