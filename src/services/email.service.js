@@ -25,7 +25,7 @@ transporter.verify((error, success) => {
 const sendEmail = async (to, subject, text, html) => {
   try {
     const info = await transporter.sendMail({
-      from: `"Navya Pay" <${process.env.EMAIL_USER}>`, // sender address
+      from: `"Kube Pay" <${process.env.EMAIL_USER}>`, // sender address
       to, // list of receivers
       subject, // Subject line
       text, // plain text body
@@ -40,16 +40,16 @@ const sendEmail = async (to, subject, text, html) => {
 };
 
 async function sendRegistrationEmail(userEmail, name) {
-    const subject = "Welcome to Navya Pay 🚀";
+    const subject = "Welcome to Kube Pay 🚀";
 
-    const text = `Hello ${name}, thank you for registering on Navya Pay.`;
+    const text = `Hello ${name}, thank you for registering on Kube Pay.`;
 
     const html = `
     <div style="font-family: Arial; background:#f4f4f4; padding:20px;">
       <div style="max-width:600px; margin:auto; background:white; border-radius:10px; overflow:hidden;">
         
         <div style="background:#111827; color:white; padding:20px; text-align:center;">
-          <h1>Welcome to Navya Pay 🚀</h1>
+          <h1>Welcome to Kube Pay 🚀</h1>
         </div>
 
         <div style="padding:20px;">
@@ -64,7 +64,7 @@ async function sendRegistrationEmail(userEmail, name) {
             </a>
           </div>
 
-          <p>Cheers,<br><b>Navya Pay Team</b></p>
+          <p>Cheers,<br><b>Kube Pay Team</b></p>
         </div>
 
       </div>
@@ -74,7 +74,7 @@ async function sendRegistrationEmail(userEmail, name) {
     await sendEmail(userEmail, subject, text, html);
 }
 async function sendTransactionEmail(userEmail, name, amount, toAccount) {
-    const subject = "Navya Pay Transaction Alert 🚨";
+    const subject = "Kube Pay Transaction Alert 🚨";
     const text = `Hello ${name}, a transaction of ₹${amount} has been made to account ${toAccount}.`;
     const html = `
       <div style="font-family: Arial; background:#f4f4f4; padding:20px;">
@@ -97,7 +97,7 @@ async function sendTransactionEmail(userEmail, name, amount, toAccount) {
 }
 
 async function sendTransactionFailureEmail(userEmail, name, amount, toAccount) {
-    const subject = "Navya Pay Transaction Alert 🚨";
+    const subject = "Kube Pay Transaction Alert 🚨";
     const text = `Hello ${name}, a transaction of ₹${amount} has failed.`;
     const html = `
       <div style="font-family: Arial; background:#f4f4f4; padding:20px;">

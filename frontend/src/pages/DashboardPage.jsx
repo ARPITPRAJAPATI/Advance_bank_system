@@ -240,7 +240,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <span className="text-lg font-bold tracking-tight text-white">
-                navya<span className="text-slate-400 font-light">Pay</span>
+                kube<span className="text-slate-400 font-light">Pay</span>
               </span>
               <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-400">
                 Banking Dashboard
@@ -336,7 +336,7 @@ export default function DashboardPage() {
                           {acc.status || 'ACTIVE'}
                         </span>
                       </div>
-                      <span className="text-xs text-slate-500 font-mono">navyaPay</span>
+                      <span className="text-xs text-slate-500 font-mono">kubePay</span>
                     </div>
 
                     {/* Balance Display */}

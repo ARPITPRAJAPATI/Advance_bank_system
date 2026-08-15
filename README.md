@@ -1,4 +1,4 @@
-<h1 align="center">✦ Navya Pay — Advanced Banking System</h1>
+<h1 align="center">✦ Kube Pay — Advanced Banking System</h1>
 
 <p align="center">
   <b>Enterprise-Grade Banking Platform & Financial Transaction System</b><br/>
@@ -19,9 +19,9 @@
 
 ## 📌 Executive Overview
 
-**Navya Pay** (Advanced Banking System) is a production-grade, full-stack financial application built for ultra-high consistency, bank-level security, and quiet luxury aesthetics. 
+**Kube Pay** (Advanced Banking System) is a production-grade, full-stack financial application built for ultra-high consistency, bank-level security, and quiet luxury aesthetics. 
 
-Unlike conventional CRUD applications, **Navya Pay** is engineered around core **Distributed Systems & Financial Engineering** principles:
+Unlike conventional CRUD applications, **Kube Pay** is engineered around core **Distributed Systems & Financial Engineering** principles:
 - 💳 **Atomic DB Transactions**: Multi-document MongoDB ACID sessions guarantee that money is never lost during transfers.
 - 📊 **Double-Entry Ledger Architecture**: Every transfer generates paired `DEBIT` and `CREDIT` records ensuring zero net-loss auditability.
 - 🔁 **Idempotent API Engine**: Guaranteed single execution via UUID idempotency keys to eliminate double-spending from network retries.
@@ -171,7 +171,7 @@ adv_bank_system/
 | | **Day 11** | Live Transaction Ledger Table with Credit/Debit Filters | ⚪ Planned |
 | **Phase 5** | **Day 12** | Virtual Platinum Debit Card Manager (Flip 3D Card & Freeze Card) | ⚪ Planned |
 | | **Day 13** | Expense Analytics & Category Spending Breakdown Charts | ⚪ Planned |
-| | **Day 14** | QR Scanner Simulation & Quick `@navya` Handle Pay Overlay | ⚪ Planned |
+| | **Day 14** | QR Scanner Simulation & Quick `@kube` Handle Pay Overlay | ⚪ Planned |
 | **Phase 6** | **Day 15** | End-to-End Flow Verification, Skeletons & Production Build | ⚪ Planned |
 
 ---

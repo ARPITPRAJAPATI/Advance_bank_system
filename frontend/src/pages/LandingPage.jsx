@@ -34,7 +34,7 @@ export default function LandingPage() {
             <div className="lg:col-span-6 space-y-8 text-left">
               <div className="space-y-1">
                 <div className="text-5xl sm:text-6xl font-extrabold tracking-tight text-white flex items-center gap-2">
-                  <span>navya</span>
+                  <span>kube</span>
                   <span className="text-slate-400 font-light">Pay</span>
                   <span className="inline-block text-2xl text-slate-400 animate-spin [animation-duration:10s]">
                     ✦
@@ -75,7 +75,7 @@ export default function LandingPage() {
                         <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white">
                           ✦
                         </div>
-                        <span className="text-xs font-bold text-white">navyaPay</span>
+                        <span className="text-xs font-bold text-white">kubePay</span>
                       </div>
                       <span className="text-xs text-slate-400">🔔</span>
                     </div>
@@ -88,7 +88,7 @@ export default function LandingPage() {
                     </div>
 
                     <div className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between text-xs font-mono text-slate-300">
-                      <span>64927845@navya</span>
+                      <span>64927845@kube</span>
                       <span className="text-[10px] text-slate-400 uppercase font-bold">Copy</span>
                     </div>
 
@@ -134,7 +134,7 @@ export default function LandingPage() {
 
                     <div className="flex items-center gap-3 relative z-10">
                       <div className="w-8 h-6 rounded bg-amber-400/20 border border-amber-300/40" />
-                      <span className="text-lg font-bold text-white tracking-tight">navyaPay</span>
+                      <span className="text-lg font-bold text-white tracking-tight">kubePay</span>
                     </div>
 
                     <div className="flex justify-between items-end relative z-10">
@@ -164,7 +164,7 @@ export default function LandingPage() {
               </div>
               <div className="text-left">
                 <div className="text-xl font-bold text-white">10 million+</div>
-                <div className="text-xs text-slate-400 font-medium">users love Navya Pay</div>
+                <div className="text-xs text-slate-400 font-medium">users love Kube Pay</div>
               </div>
             </div>
 
@@ -196,7 +196,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-xl font-bold text-white">Instant UPI Ledgers</h3>
               <p className="text-slate-400 text-sm leading-relaxed">
-                Scan any QR code and transfer money directly from your <span className="text-white font-medium">@navya</span> handle with zero latency.
+                Scan any QR code and transfer money directly from your <span className="text-white font-medium">@kube</span> handle with zero latency.
               </p>
             </TiltCard>
 
@@ -226,7 +226,7 @@ export default function LandingPage() {
         <section className="py-20 px-6 max-w-4xl mx-auto text-center">
           <TiltCard maxTilt={8} className="p-12 rounded-3xl bg-[#12161F]/90 border border-white/10 space-y-6 backdrop-blur-xl shadow-2xl">
             <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-              Ready to get your <span className="text-slate-400 font-light">Navya Pay card?</span>
+              Ready to get your <span className="text-slate-400 font-light">Kube Pay card?</span>
             </h2>
             <p className="text-slate-400 text-sm max-w-md mx-auto">
               Join 10 million+ users. Setup takes less than 60 seconds.
@@ -249,10 +249,10 @@ export default function LandingPage() {
       <footer className="border-t border-white/[0.08] py-8 bg-[#0A0C10] text-center text-xs text-slate-500 relative z-10">
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm font-bold text-white">
-            <span>✦ navya<span className="text-slate-400 font-light">Pay</span></span>
+            <span>✦ kube<span className="text-slate-400 font-light">Pay</span></span>
             <span className="text-xs text-slate-500 font-normal">• Private Wealth Banking</span>
           </div>
-          <p>© 2026 Navya Pay Inc. All rights reserved.</p>
+          <p>© 2026 Kube Pay Inc. All rights reserved.</p>
         </div>
       </footer>
     </div>

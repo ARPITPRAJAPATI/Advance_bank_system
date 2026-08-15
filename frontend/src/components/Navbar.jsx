@@ -16,7 +16,7 @@ export default function Navbar({ isAuthenticated = false, onLogout }) {
             ✦
           </div>
           <span className="text-2xl font-bold tracking-tight text-white">
-            navya<span className="text-slate-400 font-light">Pay</span>
+            kube<span className="text-slate-400 font-light">Pay</span>
           </span>
         </Link>
 
