@@ -70,7 +70,7 @@ async function createTransaction(req, res) {
 
     let transaction; 
 
-    try{
+    try {
         const [txn] = await transactionModel.create([{
             fromAccount,
             toAccount,
@@ -87,10 +87,6 @@ async function createTransaction(req, res) {
             transaction: transaction._id,
             type: "CREDIT"
         }], {session})
-        
-        await(()=>{
-            return new Promise((resolve) => setTimeout(resolve,15*1000));
-        })()
 
         await ledgerModel.create([{
             account: fromAccount,
@@ -108,15 +104,22 @@ async function createTransaction(req, res) {
     } catch(err) {
         await session.abortTransaction()
         session.endSession()
+        return res.status(500).json({
+            message: "Transaction failed to process",
+            error: err.message
+        });
     }
     
-   
-    await emailService.sendRegistrationEmail(
-        req.user.email,
-        req.user.name,
-        amount,
-        toAccount
-    )
+    try {
+        await emailService.sendTransactionEmail(
+            req.user.email,
+            req.user.name,
+            amount,
+            toAccount
+        );
+    } catch (emailErr) {
+        console.error("Email notification error (non-blocking):", emailErr.message);
+    }
 
     return res.status(201).json({
         message: "Transaction completed successfully",

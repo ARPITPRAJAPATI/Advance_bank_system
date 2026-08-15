@@ -19,9 +19,11 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use("/api/auth",authRouter)
-app.use("/api/accounts",accountRouter)
-app.use("/api/transaction", transactionRouter)
+app.use("/api/auth", authRouter);
+app.use("/api/accounts", accountRouter);
+app.use("/api/account", accountRouter);
+app.use("/api/transaction", transactionRouter);
+app.use("/api/transactions", transactionRouter);
 
 
 module.exports = app
