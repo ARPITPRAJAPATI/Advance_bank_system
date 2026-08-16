@@ -1,3 +1,7 @@
 node_modules
-.env
 .git
+.env
+.env.*
+npm-debug.log
+frontend
+README.md
