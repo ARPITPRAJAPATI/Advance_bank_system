@@ -26,7 +26,7 @@ Unlike conventional CRUD applications, **Kube Pay** is engineered around core **
 - 📊 **Double-Entry Ledger Architecture**: Every transfer generates paired `DEBIT` and `CREDIT` records ensuring zero net-loss auditability.
 - 🔁 **Idempotent API Engine**: Guaranteed single execution via UUID idempotency keys to eliminate double-spending from network retries.
 - 🔒 **HttpOnly Cookie Auth Shield**: JWT authentication powered by automatic cookie persistence and server-side token blacklisting.
-- ✨ **Quiet Luxury Design System**: React 19 + TailwindCSS v4 frontend featuring glassmorphism cards, dynamic 3D tilt interaction, and zero-latency UI responsiveness.
+- ✨ **Quiet Luxury Design System**: React 19 + TailwindCSS v4 frontend featuring glassmorphism cards, dynamic 3D tilt interaction, and zero-latency UI responsiveness..
 
 ---
 
