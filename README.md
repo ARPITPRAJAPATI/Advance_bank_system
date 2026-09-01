@@ -2,7 +2,7 @@
 
 <p align="center">
   <b>Enterprise-Grade Banking Platform & Financial Transaction System</b><br/>
-  <i>Atomic Ledger Operations • Idempotency Engine • JWT Cookie Shield • Modern Luxury UI</i>
+  <i>Atomic Ledger Operations • Idempotency Engine • JWT Cookie Shield • Modern Luxury UI • DevOps & Cloud Native</i>
 </p>
 
 <p align="center">
@@ -12,21 +12,24 @@
   <img src="https://img.shields.io/badge/Node.js-v20+-339933?style=for-the-badge&logo=node.js&logoColor=white"/>
   <img src="https://img.shields.io/badge/Express-v5.2-000000?style=for-the-badge&logo=express&logoColor=white"/>
   <img src="https://img.shields.io/badge/MongoDB-Mongoose-47A248?style=for-the-badge&logo=mongodb&logoColor=white"/>
-  <img src="https://img.shields.io/badge/JWT-HttpOnly_Cookies-FF6B6B?style=for-the-badge&logo=jsonwebtokens&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Docker-Containerized-2496ED?style=for-the-badge&logo=docker&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Jenkins-CI%2FCD-D24939?style=for-the-badge&logo=jenkins&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Terraform-IaC-844FBA?style=for-the-badge&logo=terraform&logoColor=white"/>
 </p>
 
 ---
 
 ## 📌 Executive Overview
 
-**Kube Pay** (Advanced Banking System) is a production-grade, full-stack financial application built for ultra-high consistency, bank-level security, and quiet luxury aesthetics. 
+**Kube Pay** (Advanced Banking System) is a production-grade, full-stack financial application engineered for ultra-high consistency, bank-level security, quiet luxury dark aesthetics, and enterprise DevOps automation. 
 
-Unlike conventional CRUD applications, **Kube Pay** is engineered around core **Distributed Systems & Financial Engineering** principles:
-- 💳 **Atomic DB Transactions**: Multi-document MongoDB ACID sessions guarantee that money is never lost during transfers.
+Unlike conventional CRUD applications, **Kube Pay** is architected around core **Distributed Systems & Financial Engineering** principles:
+- 💳 **Atomic DB Transactions**: Multi-document MongoDB ACID sessions guarantee that funds are never lost or partially transferred.
 - 📊 **Double-Entry Ledger Architecture**: Every transfer generates paired `DEBIT` and `CREDIT` records ensuring zero net-loss auditability.
-- 🔁 **Idempotent API Engine**: Guaranteed single execution via UUID idempotency keys to eliminate double-spending from network retries.
+- 🔁 **Idempotent API Engine**: Guaranteed single execution via UUID idempotency keys to eliminate duplicate debits from network retries or double-clicks.
 - 🔒 **HttpOnly Cookie Auth Shield**: JWT authentication powered by automatic cookie persistence and server-side token blacklisting.
-- ✨ **Quiet Luxury Design System**: React 19 + TailwindCSS v4 frontend featuring glassmorphism cards, dynamic 3D tilt interaction, and zero-latency UI responsiveness..
+- ✨ **Quiet Luxury Design System**: React 19 + TailwindCSS v4 frontend featuring glassmorphism cards, dynamic 3D tilt interaction, and zero-latency UI responsiveness.
+- 🚢 **DevOps & Cloud-Native Ready**: Fully containerized with multi-stage Docker builds, Nginx reverse proxy, Jenkins CI/CD pipeline (with SonarQube, OWASP & Trivy scans), and AWS EC2 provisioning with Terraform.
 
 ---
 
@@ -34,14 +37,16 @@ Unlike conventional CRUD applications, **Kube Pay** is engineered around core **
 
 | Domain | Technology | Key Capabilities |
 | :--- | :--- | :--- |
-| **Client Core** | **React 19.2 + Vite 8.2** | Lightning fast HMR, component tree optimization, zero bundle bloat |
-| **Styling & UI** | **Tailwind CSS v4 + Vanilla CSS** | Custom matte dark theme (`#0A0C10`), glassmorphism, 3D tilt effects |
-| **Icons & Motion** | **Lucide Icons** | Modern minimalist vector iconography |
-| **State & Router** | **React Router v7 + Context API** | `AuthContext` session persistence & `PrivateRoute` protection |
-| **HTTP Client** | **Axios 1.19** | Interceptors, automated error mapping & CORS `withCredentials` support |
-| **Server Engine** | **Node.js + Express 5.2** | Async RESTful services, strict input validation, CORS credentials |
-| **Database** | **MongoDB + Mongoose 9.8** | Atomic Session Transactions, Schema Validation, Ledger models |
-| **Security** | **JWT + Bcrypt.js + CookieParser** | Password hashing, HTTP-Only secure cookies, blacklisted token tracking |
+| **Client Core** | **React 19.2 + Vite 8.2** | Ultra-fast HMR, optimized component tree, modular clean architecture |
+| **Styling & UI** | **Tailwind CSS v4 + Custom Glassmorphism** | Custom dark theme (`#0A0C10`), glass cards, radial glares, 3D tilt effects |
+| **Icons & Motion** | **Lucide Icons + Custom CSS Keyframes** | Modern minimalist iconography, floating 3D cards, smooth spring transitions |
+| **State & Router** | **React Router v7 + Context API** | `AuthContext` persistent session management & `PrivateRoute` route guards |
+| **HTTP Client** | **Axios 1.19** | Centralized interceptors, automated error mapping & CORS `withCredentials` support |
+| **Server Engine** | **Node.js + Express 5.2** | RESTful services, strict input validation, cookie parsers, CORS credentials |
+| **Database** | **MongoDB + Mongoose 9.8** | Atomic Session Transactions (ACID), Schema Validation, Ledger models |
+| **Security** | **JWT + Bcrypt.js + Token Blacklist** | Cryptographic hashing, HTTP-Only secure cookies, blacklisted token tracking |
+| **DevOps & CI/CD** | **Docker + Jenkins + SonarQube + Trivy** | Automated security scanning, quality gates, multi-container Docker Compose |
+| **Infrastructure** | **Terraform (AWS)** | Automated AWS EC2 infrastructure provisioning as code |
 
 ---
 
@@ -87,41 +92,54 @@ Incoming API Request ──▶ Check `idempotencyKey` in Transactions Collection
 
 ```
 adv_bank_system/
-├── frontend/                     # Client Web Application (Vite + React)
-│   ├── public/                   # Static assets & icons
+├── frontend/                     # Client Web Application (React 19 + Vite)
+│   ├── public/                   # Static assets & favicon
 │   ├── src/
 │   │   ├── assets/               # Branding assets
-│   │   ├── components/           # UI Component Library
+│   │   ├── components/           # Reusable UI Components
 │   │   │   ├── Button.jsx        # Production-grade button primitive
 │   │   │   ├── Input.jsx         # Controlled form input helper
-│   │   │   ├── Navbar.jsx        # Quiet luxury sticky header
-│   │   │   └── TiltCard.jsx      # 3D tilt card primitive
+│   │   │   ├── Navbar.jsx        # Sticky glassmorphic navbar
+│   │   │   └── TiltCard.jsx      # 3D parallax mouse-tilt card primitive
 │   │   ├── context/
 │   │   │   └── AuthContext.jsx   # Global user state & session persistence
 │   │   ├── pages/
-│   │   │   └── LandingPage.jsx   # Main luxury landing page & mockup showcase
+│   │   │   ├── LandingPage.jsx   # Luxury landing page with 3D interactive preview
+│   │   │   ├── LoginPage.jsx     # Glassmorphic login authentication
+│   │   │   ├── RegisterPage.jsx  # Glassmorphic registration form
+│   │   │   └── DashboardPage.jsx # Full-featured banking dashboard
 │   │   ├── routes/
 │   │   │   └── PrivateRoute.jsx  # Protected route guard
 │   │   ├── services/
-│   │   │   ├── api.js            # Axios client with interceptors
-│   │   │   ├── auth.service.js   # Login, Register & Logout API handlers
-│   │   │   ├── account.service.js# Bank account endpoints
+│   │   │   ├── api.js            # Axios client with interceptors & base config
+│   │   │   ├── auth.service.js   # Auth API handlers (Login, Register, Logout)
+│   │   │   ├── account.service.js# Bank account CRUD endpoints
 │   │   │   └── transaction.service.js # Money transfer endpoints
-│   │   ├── App.jsx               # Main React Router switch
-│   │   ├── index.css             # Tailwind v4 theme tokens & animations
+│   │   ├── App.jsx               # React Router configuration
+│   │   ├── index.css             # Tailwind v4 directives, custom styles & 3D keyframes
 │   │   └── main.jsx              # React DOM root entry
-│   ├── package.json
-│   └── vite.config.js
+│   ├── Dockerfile                # Multi-stage frontend Docker build with Nginx
+│   ├── nginx.conf                # Nginx reverse proxy configuration
+│   ├── package.json              # Frontend dependencies & scripts
+│   └── vite.config.js            # Vite proxy & Tailwind plugin setup
 │
 ├── src/                          # Express REST API Backend
 │   ├── controllers/              # Auth, Account & Transaction controllers
-│   ├── db/                       # Mongoose database connection
+│   ├── db/                       # MongoDB database connection
 │   ├── middleware/               # Auth middleware & token verification
 │   ├── models/                   # User, Account, Transaction & Blacklist schemas
 │   ├── routes/                   # Auth, Account & Transaction express routers
-│   ├── services/                 # Email service & helper utilities
+│   ├── services/                 # Email service (OAuth2) & helper utilities
 │   └── app.js                    # Express app configuration & CORS setup
 │
+├── terraform/                    # Infrastructure as Code (AWS EC2)
+│   ├── ec2.tf                    # EC2 instance & security groups
+│   ├── terraform.tf              # AWS provider configuration
+│   └── variables.tf              # Configurable deployment variables
+│
+├── docker-compose.yml            # Multi-container orchestration (Backend + Frontend)
+├── Dockerfile                    # Node.js backend Docker container
+├── jenkins                       # Jenkins declarative CI/CD pipeline
 ├── server.js                     # Backend HTTP server entry
 ├── package.json                  # Root dependencies & scripts
 └── README.md                     # Master documentation
@@ -150,29 +168,7 @@ adv_bank_system/
 | :--- | :--- | :--- | :---: |
 | `POST` | `/api/transaction/` | Execute atomic fund transfer between accounts | ✅ |
 | `GET` | `/api/transaction/my-transactions` | Fetch full ledger transaction history | ✅ |
-| `POST` | `/api/transaction/system/initial-funds` | Admin deposit initial balance into account | ✅ |
-
----
-
-## 🗺️ 15-Day Implementation Roadmap & Status
-
-| Phase | Day | Focus Module | Status |
-| :--- | :---: | :--- | :---: |
-| **Phase 1** | **Day 1** | Backend API, CORS Configuration & Ledger Endpoints | 🟢 Completed |
-| | **Day 2** | Design System Tokens (`index.css`), Base Primitives & Axios Client | 🟢 Completed |
-| | **Day 3** | Global `AuthContext`, Route Guard & Luxury `LandingPage.jsx` | 🟢 Completed |
-| **Phase 2** | **Day 4** | Interactive Auth UI (`LoginPage.jsx` & `RegisterPage.jsx`) | 🟡 In Progress |
-| | **Day 5** | User Profile, Security Center & Active Session Revocation | ⚪ Planned |
-| **Phase 3** | **Day 6** | Main Dashboard Shell & Combined Balance Metric Cards | ⚪ Planned |
-| | **Day 7** | Accounts Management Hub & Interactive `AccountCard` Grid | ⚪ Planned |
-| | **Day 8** | Account Funding Modal & Status Toggles | ⚪ Planned |
-| **Phase 4** | **Day 9** | Instant Money Transfer Suite (UPI / Internal Account Transfer) | ⚪ Planned |
-| | **Day 10** | Atomic Transaction Processing UI & Digital Receipt Modal | ⚪ Planned |
-| | **Day 11** | Live Transaction Ledger Table with Credit/Debit Filters | ⚪ Planned |
-| **Phase 5** | **Day 12** | Virtual Platinum Debit Card Manager (Flip 3D Card & Freeze Card) | ⚪ Planned |
-| | **Day 13** | Expense Analytics & Category Spending Breakdown Charts | ⚪ Planned |
-| | **Day 14** | QR Scanner Simulation & Quick `@kube` Handle Pay Overlay | ⚪ Planned |
-| **Phase 6** | **Day 15** | End-to-End Flow Verification, Skeletons & Production Build | ⚪ Planned |
+| `POST` | `/api/transaction/system/initial-funds` | Deposit initial test balance into account | ✅ |
 
 ---
 
@@ -181,8 +177,11 @@ adv_bank_system/
 ### Prerequisites
 - Node.js `v18.0.0` or higher
 - MongoDB instance (Local or MongoDB Atlas)
+- Docker & Docker Compose (Optional for containerized run)
 
-### 1. Backend Installation & Launch
+### Option 1: Running Locally (Development Mode)
+
+#### 1. Backend Setup
 ```bash
 # Navigate to project root
 cd adv_bank_system
@@ -191,15 +190,20 @@ cd adv_bank_system
 npm install
 
 # Configure environment variables (.env)
+# Create a .env file with:
 PORT=3000
-MONGO_URI=mongodb://127.0.0.1:27017/adv_bank_system
-JWT_SECRET=your_super_secret_jwt_key
+MONGO_URI="mongodb+srv://<username>:<password>@cluster.mongodb.net/bank-system"
+JWT_SECRET="your_jwt_secret_key"
+EMAIL_USER="your_email@gmail.com"
+CLIENT_ID="your_google_client_id"
+CLIENT_SECRET="your_google_client_secret"
+REFRESH_TOKEN="your_google_refresh_token"
 
 # Start development server
 npm run dev
 ```
 
-### 2. Frontend Installation & Launch
+#### 2. Frontend Setup
 ```bash
 # Open a new terminal and navigate to frontend
 cd adv_bank_system/frontend
@@ -207,24 +211,89 @@ cd adv_bank_system/frontend
 # Install dependencies
 npm install
 
+# Configure frontend environment (.env)
+VITE_API_URL=http://localhost:3000/api
+
 # Start Vite dev server
 npm run dev
 ```
-Open **`http://localhost:5173`** (or port displayed by Vite) in your browser.
+Open **`http://localhost:8000`** (or port specified in terminal) in your browser.
+
+---
+
+### Option 2: Running with Docker Compose
+
+Run the entire application stack (Frontend + Backend + Reverse Proxy) with a single command:
+
+```bash
+# Build and run all containers
+docker-compose up --build -d
+
+# Check running containers
+docker-compose ps
+
+# Stop containers
+docker-compose down
+```
+- **Frontend App**: `http://localhost:5173`
+- **Backend API**: `http://localhost:3001`
+
+---
+
+## 🚀 CI/CD & DevOps Pipeline (Jenkins)
+
+The project includes an enterprise declarative Jenkins pipeline (`jenkins`) covering:
+
+1. **Parameter Validation**: Enforces mandatory Docker tag arguments.
+2. **Code Checkout**: Clones source repository cleanly.
+3. **Security Scans**:
+   - **Trivy**: Comprehensive filesystem vulnerability scan.
+   - **OWASP Dependency-Check**: Vulnerability analysis of third-party dependencies.
+4. **Code Quality**:
+   - **SonarQube Analysis & Quality Gates**: Enforces strict static code analysis and test metrics.
+5. **Environment Configuration**: Automated environment setup scripts for backend & frontend.
+6. **Containerization**:
+   - Builds optimized Docker images for frontend and backend.
+   - Pushes signed images to Docker Hub.
+7. **Automated CD Trigger**: Triggers downstream deployment jobs upon pipeline success.
 
 ---
 
 ## 🛡️ Security & Resilience Features
 
-- ✅ **SQL/NoSQL Injection Protection**: Strict Mongoose schema casting.
-- ✅ **Cross-Origin Resource Sharing (CORS)**: Configured with `origin: true` & `credentials: true` for safe cookie transmission.
-- ✅ **Password Hashing**: Cryptographic salt rounds via `bcryptjs`.
-- ✅ **Token Blacklisting**: Revoked JWT tokens stored in Redis/MongoDB blacklist on logout.
-- ✅ **Zero Re-Render Overhead**: Clean component architecture without unneeded mouse tracking or state bloat.
+- ✅ **ACID Transactions**: MongoDB session-based transfers preventing partial debits or balance inconsistencies.
+- ✅ **Idempotency Guarantee**: Unique transaction tokens preventing double debits from repeated requests.
+- ✅ **HttpOnly Cookies**: Prevents client-side XSS attacks from reading access tokens.
+- ✅ **Token Blacklisting**: Revoked JWT tokens stored on logout to prevent reuse.
+- ✅ **Password Hashing**: Secure salted hashes via `bcryptjs`.
+- ✅ **CORS & Proxy Security**: Whitelisted origin matching with credential forwarding.
+- ✅ **Input Validation**: Sanitized schema models rejecting invalid inputs.
+
+---
+
+## 🗺️ Feature Status
+
+| Feature / Module | Status |
+| :--- | :---: |
+| Backend Express REST API & Mongoose ACID Sessions | 🟢 Completed |
+| Double-Entry Ledger System & Idempotency Engine | 🟢 Completed |
+| JWT Authentication & HttpOnly Cookie Management | 🟢 Completed |
+| Token Blacklist & Session Revocation | 🟢 Completed |
+| Quiet Luxury Dark Theme Design System (`#0A0C10`) | 🟢 Completed |
+| 3D Interactive Parallax Tilt Card Component (`TiltCard.jsx`) | 🟢 Completed |
+| Landing Page with Interactive 3D Device & Card Mockup | 🟢 Completed |
+| Glassmorphic Login & Register Pages with Live Feedback | 🟢 Completed |
+| Interactive Dashboard with Net Worth & Account Switcher | 🟢 Completed |
+| Atomic Fund Transfer Modal with Idempotency Key Generation | 🟢 Completed |
+| Live Filterable Transaction History Ledger | 🟢 Completed |
+| Realistic Virtual Platinum RuPay Debit Card Interface | 🟢 Completed |
+| Multi-Stage Docker Containerization & Nginx Reverse Proxy | 🟢 Completed |
+| Jenkins Declarative CI/CD Pipeline (SonarQube + Trivy + OWASP) | 🟢 Completed |
+| Terraform AWS Infrastructure Automation | 🟢 Completed |
 
 ---
 
 <p align="center">
-  <b>Crafted by Arpit Prajapati</b><br/>
-  🚀 <i>Built for Real-World Financial Systems Engineering</i>
+  <b>Crafted with ❤️ by Arpit Prajapati</b><br/>
+  🚀 <i>Built for Real-World Financial Systems Engineering & Cloud-Native Scale</i>
 </p>
