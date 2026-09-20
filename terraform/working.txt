@@ -1,0 +1,24 @@
+🔄 Summary of your exact DevOps Workflow:
+
+
+Step 1 — Local AWS Setup (aws configure)
+
+You run aws configure on your laptop to save your AWS Access Key & Secret Key. This gives Terraform permission to create resources in your AWS account.
+
+Step 2 — Terraform Execution (init ➔ plan ➔ apply)
+
+terraform init: Downloads the AWS provider plugin.
+terraform plan: Shows a preview of what will be created.
+terraform apply: Talks to AWS API and creates the EC2 instance in the specified region & default VPC.
+
+Step 3 — Public Key Injection
+
+During terraform apply, Terraform takes your Public Key (generated via ssh-keygen at ~/.ssh/id_rsa.pub) and installs it into the EC2 instance's /home/ubuntu/.ssh/authorized_keys file.
+
+Step 4 — SSH Connection
+
+Now that the EC2 instance has your Public Key lock, you open your local terminal and run:
+bash
+ssh -i ~/.ssh/id_rsa ubuntu@<EC2-Public-IP>
+
+Your local Private Key matches the Public Key on EC2, and BINGO! You are logged into your EC2 server terminal.
