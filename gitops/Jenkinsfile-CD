@@ -33,7 +33,7 @@ pipeline {
 
         stage('Git Checkout: Main') {
             steps {
-                git branch: 'main', url: "${env.REPO_URL}"
+                git branch: 'main', changelog: false, poll: false, url: "${env.REPO_URL}"
             }
         }
 

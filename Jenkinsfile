@@ -23,7 +23,7 @@ pipeline {
 
         stage('Git: Code Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/ARPITPRAJAPATI/Advance_bank_system.git'
+                git branch: 'main', changelog: false, poll: false, url: 'https://github.com/ARPITPRAJAPATI/Advance_bank_system.git'
             }
         }
 
