@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: aruhehe/kubepay-backend:6
+          image: aruhehe/kubepay-backend:8
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
