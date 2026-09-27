@@ -107,7 +107,7 @@ pipeline {
             echo "🎉 CI Pipeline Finished! Deployed images tagged with ${TAG}"
         }
         failure {
-            echo "❌ CI Pipeline Failed. Please check the logs above."
+            echo "CI Pipeline Failed. Please check the logs above."
             emailext (
                 attachLog: true,
                 to: "arpitprajapati2005@gmail.com",
