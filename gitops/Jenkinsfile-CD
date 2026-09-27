@@ -1,0 +1,58 @@
+pipeline {
+    agent { label 'Node' }
+
+    parameters {
+        string(name: 'BACKEND_DOCKER_TAG', defaultValue: 'latest', description: 'Backend Docker Tag')
+        string(name: 'FRONTEND_DOCKER_TAG', defaultValue: 'latest', description: 'Frontend Docker Tag')
+    }
+
+    stages {
+        stage('Workspace Cleanup') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('Git Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/ARPITPRAJAPATI/Advance_bank_system.git'
+            }
+        }
+
+        stage('Update Manifests with New Tags') {
+            steps {
+                script {
+                    sh """
+                        sed -i "s|image: aruhehe/kubepay-backend:.*|image: aruhehe/kubepay-backend:${params.BACKEND_DOCKER_TAG}|g" k8s/backend-deployment.yaml
+                        sed -i "s|image: aruhehe/kubepay-frontend:.*|image: aruhehe/kubepay-frontend:${params.FRONTEND_DOCKER_TAG}|g" k8s/frontend-deployment.yaml
+                    """
+                }
+            }
+        }
+
+        stage('Commit & Push to GitHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+                    sh """
+                        git config user.name "ARPITPRAJAPATI"
+                        git config user.email "arpitprajapati2005@gmail.com"
+
+                        git add k8s/backend-deployment.yaml k8s/frontend-deployment.yaml
+                        git commit -m "chore(cd): update deployment tags to ${params.BACKEND_DOCKER_TAG} / ${params.FRONTEND_DOCKER_TAG} [skip ci]" || echo "No changes to commit"
+                        
+                        git push https://\${GIT_USER}:\${GIT_TOKEN}@github.com/ARPITPRAJAPATI/Advance_bank_system.git HEAD:main
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "🎉 CD Pipeline Success! Updated manifests pushed to GitHub. ArgoCD will now sync and deploy to EKS!"
+        }
+        failure {
+            echo "❌ CD Pipeline Failed! Please check logs."
+        }
+    }
+}

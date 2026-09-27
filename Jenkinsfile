@@ -91,7 +91,11 @@ pipeline {
             archiveArtifacts artifacts: '*.html, **/dependency-check-report.xml', allowEmptyArchive: true
         }
         success {
-            echo "🎉 CI Pipeline Completed Successfully! Images pushed to DockerHub as ${params.IMAGE_TAG}"
+            echo "🎉 CI Pipeline Completed Successfully! Images pushed to DockerHub as ${params.BACKEND_DOCKER_TAG} and ${params.FRONTEND_DOCKER_TAG}"
+            build job: "KubePay-CD", parameters: [
+                string(name: 'BACKEND_DOCKER_TAG', value: "${params.BACKEND_DOCKER_TAG}"),
+                string(name: 'FRONTEND_DOCKER_TAG', value: "${params.FRONTEND_DOCKER_TAG}")
+            ]
         }
         failure {
             echo "❌ CI Pipeline Failed. Please check the logs above."
