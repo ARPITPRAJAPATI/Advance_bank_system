@@ -1,12 +1,12 @@
 services:
   backend:
     build:
-      context: .
+      context: ./backend
     container_name: kubepay-backend
     ports:
       - "3001:3000"
     env_file:
-      - .env.docker
+      - ./backend/.env.docker
     restart: unless-stopped
 
   frontend:
@@ -17,4 +17,4 @@ services:
       - "5173:80"
     depends_on:
       - backend
-    restart: unless-stopped
+    restart: unless-stopped   
