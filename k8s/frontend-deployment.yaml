@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: aruhehe/kubepay-frontend:5
+          image: aruhehe/kubepay-frontend:6
           imagePullPolicy: Always
           ports:
             - containerPort: 80
