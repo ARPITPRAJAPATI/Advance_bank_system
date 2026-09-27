@@ -1,27 +1,46 @@
 pipeline {
     agent { label 'Node' }
 
+    environment {
+        APP_NAME        = 'Kube Pay (Advance Banking System)'
+        REPO_URL        = 'https://github.com/ARPITPRAJAPATI/Advance_bank_system.git'
+        ARGOCD_URL      = 'https://13.203.207.58:31136'
+        NOTIFICATION_TO = 'arpitprajapati2005@gmail.com'
+    }
+
     parameters {
-        string(name: 'BACKEND_DOCKER_TAG', defaultValue: 'latest', description: 'Backend Docker Tag')
-        string(name: 'FRONTEND_DOCKER_TAG', defaultValue: 'latest', description: 'Frontend Docker Tag')
+        string(name: 'BACKEND_DOCKER_TAG', defaultValue: 'latest', description: 'Docker image tag for Backend microservice')
+        string(name: 'FRONTEND_DOCKER_TAG', defaultValue: 'latest', description: 'Docker image tag for Frontend microservice')
     }
 
     stages {
+        stage('Validate Parameters') {
+            steps {
+                script {
+                    if (params.BACKEND_DOCKER_TAG == '' || params.FRONTEND_DOCKER_TAG == '') {
+                        error("❌ Deployment Aborted: Both BACKEND_DOCKER_TAG and FRONTEND_DOCKER_TAG must be provided.")
+                    }
+                    echo "📋 Target Deploy Tags -> Backend: ${params.BACKEND_DOCKER_TAG} | Frontend: ${params.FRONTEND_DOCKER_TAG}"
+                }
+            }
+        }
+
         stage('Workspace Cleanup') {
             steps {
                 cleanWs()
             }
         }
 
-        stage('Git Checkout') {
+        stage('Git Checkout: Main') {
             steps {
-                git branch: 'main', url: 'https://github.com/ARPITPRAJAPATI/Advance_bank_system.git'
+                git branch: 'main', url: "${env.REPO_URL}"
             }
         }
 
-        stage('Update Manifests with New Tags') {
+        stage('Update Kubernetes Manifests') {
             steps {
                 script {
+                    echo "🔧 Updating k8s manifests with new image versions..."
                     sh """
                         sed -i "s|image: aruhehe/kubepay-backend:.*|image: aruhehe/kubepay-backend:${params.BACKEND_DOCKER_TAG}|g" k8s/backend-deployment.yaml
                         sed -i "s|image: aruhehe/kubepay-frontend:.*|image: aruhehe/kubepay-frontend:${params.FRONTEND_DOCKER_TAG}|g" k8s/frontend-deployment.yaml
@@ -30,18 +49,40 @@ pipeline {
             }
         }
 
-        stage('Commit & Push to GitHub') {
+        stage('Pre-Flight Manifest Validation') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+                script {
+                    echo "🛡️ Validating Kubernetes manifest syntax before commit..."
                     sh """
-                        git config user.name "ARPITPRAJAPATI"
-                        git config user.email "arpitprajapati2005@gmail.com"
-
-                        git add k8s/backend-deployment.yaml k8s/frontend-deployment.yaml
-                        git commit -m "chore(cd): update deployment tags to ${params.BACKEND_DOCKER_TAG} / ${params.FRONTEND_DOCKER_TAG} [skip ci]" || echo "No changes to commit"
-                        
-                        git push https://\${GIT_USER}:\${GIT_TOKEN}@github.com/ARPITPRAJAPATI/Advance_bank_system.git HEAD:main
+                        # Verify that the substituted image tags are actually present
+                        grep "image: aruhehe/kubepay-backend:${params.BACKEND_DOCKER_TAG}" k8s/backend-deployment.yaml
+                        grep "image: aruhehe/kubepay-frontend:${params.FRONTEND_DOCKER_TAG}" k8s/frontend-deployment.yaml
+                        echo "✅ Manifests successfully verified!"
                     """
+                }
+            }
+        }
+
+        stage('Git: Commit & Push to GitOps Repo') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+                        sh """
+                            git config user.name "ARPITPRAJAPATI"
+                            git config user.email "${env.NOTIFICATION_TO}"
+
+                            # Check if changes actually exist
+                            if git diff --quiet k8s/backend-deployment.yaml k8s/frontend-deployment.yaml; then
+                                echo "⚠️ No changes detected in image tags. Skipping commit."
+                            else
+                                echo "📝 Staging changes and committing..."
+                                git add k8s/backend-deployment.yaml k8s/frontend-deployment.yaml
+                                git commit -m "chore(gitops): bump deployment versions to backend:${params.BACKEND_DOCKER_TAG} frontend:${params.FRONTEND_DOCKER_TAG} [skip ci]"
+                                git push https://\${GIT_USER}:\${GIT_TOKEN}@github.com/ARPITPRAJAPATI/Advance_bank_system.git HEAD:main
+                                echo "🚀 Pushed updated manifests to GitHub for ArgoCD reconciliation!"
+                            fi
+                        """
+                    }
                 }
             }
         }
@@ -49,10 +90,79 @@ pipeline {
 
     post {
         success {
-            echo "🎉 CD Pipeline Success! Updated manifests pushed to GitHub. ArgoCD will now sync and deploy to EKS!"
+            script {
+                echo "🎉 GitOps CD Pipeline Completed! ArgoCD is reconciling state on EKS."
+                emailext (
+                    attachLog: true,
+                    to: "${env.NOTIFICATION_TO}",
+                    subject: "🚀 [SUCCESS] ${env.APP_NAME} - Deployment Triggered (#${env.BUILD_NUMBER})",
+                    mimeType: 'text/html',
+                    body: """
+                        <!DOCTYPE html>
+                        <html>
+                        <body style="font-family: Arial, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 20px;">
+                            <div style="max-width: 600px; margin: auto; background-color: #1e293b; border-radius: 12px; padding: 24px; border: 1px solid #334155;">
+                                <h2 style="color: #10b981; margin-top: 0;">🚀 Deployment Triggered Successfully!</h2>
+                                <p style="color: #94a3b8;">The GitOps CD pipeline has updated the manifests and pushed to GitHub. ArgoCD is syncing changes to AWS EKS.</p>
+                                
+                                <table style="width: 100%; border-collapse: collapse; margin: 20px 0; color: #f8fafc;">
+                                    <tr style="border-bottom: 1px solid #334155;">
+                                        <td style="padding: 10px; color: #94a3b8;">Application</td>
+                                        <td style="padding: 10px; font-weight: bold;">${env.APP_NAME}</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #334155;">
+                                        <td style="padding: 10px; color: #94a3b8;">Build Number</td>
+                                        <td style="padding: 10px; font-weight: bold;">#${env.BUILD_NUMBER}</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #334155;">
+                                        <td style="padding: 10px; color: #94a3b8;">Backend Image</td>
+                                        <td style="padding: 10px; font-family: monospace; color: #38bdf8;">aruhehe/kubepay-backend:${params.BACKEND_DOCKER_TAG}</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #334155;">
+                                        <td style="padding: 10px; color: #94a3b8;">Frontend Image</td>
+                                        <td style="padding: 10px; font-family: monospace; color: #38bdf8;">aruhehe/kubepay-frontend:${params.FRONTEND_DOCKER_TAG}</td>
+                                    </tr>
+                                </table>
+
+                                <div style="margin-top: 24px;">
+                                    <a href="${env.ARGOCD_URL}" style="background-color: #2563eb; color: white; padding: 10px 18px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-right: 12px;">Open ArgoCD UI</a>
+                                    <a href="${env.BUILD_URL}" style="background-color: #475569; color: white; padding: 10px 18px; border-radius: 6px; text-decoration: none;">View Jenkins Logs</a>
+                                </div>
+                            </div>
+                        </body>
+                        </html>
+                    """
+                )
+            }
         }
         failure {
-            echo "❌ CD Pipeline Failed! Please check logs."
+            script {
+                echo "❌ GitOps CD Pipeline Failed!"
+                emailext (
+                    attachLog: true,
+                    to: "${env.NOTIFICATION_TO}",
+                    subject: "🚨 [FAILED] ${env.APP_NAME} - Deployment Failed (#${env.BUILD_NUMBER})",
+                    mimeType: 'text/html',
+                    body: """
+                        <!DOCTYPE html>
+                        <html>
+                        <body style="font-family: Arial, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 20px;">
+                            <div style="max-width: 600px; margin: auto; background-color: #1e293b; border-radius: 12px; padding: 24px; border: 1px solid #ef4444;">
+                                <h2 style="color: #ef4444; margin-top: 0;">🚨 Deployment Pipeline Failed</h2>
+                                <p style="color: #94a3b8;">An error occurred while updating or pushing Kubernetes manifests to GitHub.</p>
+                                
+                                <p><strong>Job:</strong> ${env.JOB_NAME}</p>
+                                <p><strong>Build Number:</strong> #${env.BUILD_NUMBER}</p>
+                                
+                                <div style="margin-top: 20px;">
+                                    <a href="${env.BUILD_URL}console" style="background-color: #ef4444; color: white; padding: 10px 18px; border-radius: 6px; text-decoration: none; font-weight: bold;">Check Error Logs</a>
+                                </div>
+                            </div>
+                        </body>
+                        </html>
+                    """
+                )
+            }
         }
     }
 }
