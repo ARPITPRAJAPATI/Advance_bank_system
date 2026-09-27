@@ -6,11 +6,12 @@ pipeline {
         DOCKER_USER     = 'aruhehe'
         BACKEND_IMAGE   = 'aruhehe/kubepay-backend'
         FRONTEND_IMAGE  = 'aruhehe/kubepay-frontend'
+        // Auto-pilot: Uses Jenkins BUILD_NUMBER (1, 2, 3...) automatically
+        TAG             = "${params.DOCKER_TAG ?: env.BUILD_NUMBER}"
     }
 
     parameters {
-        string(name: 'BACKEND_DOCKER_TAG', defaultValue: 'latest', description: 'Docker image tag for Backend')
-        string(name: 'FRONTEND_DOCKER_TAG', defaultValue: 'latest', description: 'Docker image tag for Frontend')
+        string(name: 'DOCKER_TAG', defaultValue: '', description: 'Optional custom tag. Leave empty to auto-use Jenkins BUILD_NUMBER')
     }
 
     stages {
@@ -65,13 +66,15 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry([credentialsId: 'docker', url: '']) {
-                        // Build & Push Backend
-                        sh "docker build -t ${BACKEND_IMAGE}:${params.BACKEND_DOCKER_TAG} ./backend"
-                        sh "docker push ${BACKEND_IMAGE}:${params.BACKEND_DOCKER_TAG}"
+                        // Build & Push Backend (Both version tag and latest alias)
+                        sh "docker build -t ${BACKEND_IMAGE}:${TAG} -t ${BACKEND_IMAGE}:latest ./backend"
+                        sh "docker push ${BACKEND_IMAGE}:${TAG}"
+                        sh "docker push ${BACKEND_IMAGE}:latest"
 
-                        // Build & Push Frontend
-                        sh "docker build -t ${FRONTEND_IMAGE}:${params.FRONTEND_DOCKER_TAG} ./frontend"
-                        sh "docker push ${FRONTEND_IMAGE}:${params.FRONTEND_DOCKER_TAG}"
+                        // Build & Push Frontend (Both version tag and latest alias)
+                        sh "docker build -t ${FRONTEND_IMAGE}:${TAG} -t ${FRONTEND_IMAGE}:latest ./frontend"
+                        sh "docker push ${FRONTEND_IMAGE}:${TAG}"
+                        sh "docker push ${FRONTEND_IMAGE}:latest"
                     }
                 }
             }
@@ -79,8 +82,8 @@ pipeline {
 
         stage('Trivy: Container Image Scan') {
             steps {
-                sh "trivy image --format table -o trivy-backend-image.html ${BACKEND_IMAGE}:${params.BACKEND_DOCKER_TAG}"
-                sh "trivy image --format table -o trivy-frontend-image.html ${FRONTEND_IMAGE}:${params.FRONTEND_DOCKER_TAG}"
+                sh "trivy image --format table -o trivy-backend-image.html ${BACKEND_IMAGE}:${TAG}"
+                sh "trivy image --format table -o trivy-frontend-image.html ${FRONTEND_IMAGE}:${TAG}"
             }
         }
     }
@@ -91,10 +94,10 @@ pipeline {
             archiveArtifacts artifacts: '*.html, **/dependency-check-report.xml', allowEmptyArchive: true
         }
         success {
-            echo "🎉 CI Pipeline Completed Successfully! Images pushed to DockerHub as ${params.BACKEND_DOCKER_TAG} and ${params.FRONTEND_DOCKER_TAG}"
+            echo "🎉 CI Pipeline Completed Successfully! Images pushed to DockerHub as ${TAG} and latest"
             build job: "KubePay-CD", parameters: [
-                string(name: 'BACKEND_DOCKER_TAG', value: "${params.BACKEND_DOCKER_TAG}"),
-                string(name: 'FRONTEND_DOCKER_TAG', value: "${params.FRONTEND_DOCKER_TAG}")
+                string(name: 'BACKEND_DOCKER_TAG', value: "${TAG}"),
+                string(name: 'FRONTEND_DOCKER_TAG', value: "${TAG}")
             ]
         }
         failure {

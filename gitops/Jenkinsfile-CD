@@ -6,6 +6,9 @@ pipeline {
         REPO_URL        = 'https://github.com/ARPITPRAJAPATI/Advance_bank_system.git'
         ARGOCD_URL      = 'https://13.203.207.58:31136'
         NOTIFICATION_TO = 'arpitprajapati2005@gmail.com'
+        // Smart Tag Resolution: Uses parameter passed from CI, otherwise falls back to 'latest'
+        TARGET_BACKEND_TAG  = "${params.BACKEND_DOCKER_TAG ?: 'latest'}"
+        TARGET_FRONTEND_TAG = "${params.FRONTEND_DOCKER_TAG ?: 'latest'}"
     }
 
     parameters {
@@ -17,10 +20,7 @@ pipeline {
         stage('Validate Parameters') {
             steps {
                 script {
-                    if (params.BACKEND_DOCKER_TAG == '' || params.FRONTEND_DOCKER_TAG == '') {
-                        error("❌ Deployment Aborted: Both BACKEND_DOCKER_TAG and FRONTEND_DOCKER_TAG must be provided.")
-                    }
-                    echo "📋 Target Deploy Tags -> Backend: ${params.BACKEND_DOCKER_TAG} | Frontend: ${params.FRONTEND_DOCKER_TAG}"
+                    echo "📋 Target Deploy Versions -> Backend: ${env.TARGET_BACKEND_TAG} | Frontend: ${env.TARGET_FRONTEND_TAG}"
                 }
             }
         }
@@ -42,8 +42,8 @@ pipeline {
                 script {
                     echo "🔧 Updating k8s manifests with new image versions..."
                     sh """
-                        sed -i "s|image: aruhehe/kubepay-backend:.*|image: aruhehe/kubepay-backend:${params.BACKEND_DOCKER_TAG}|g" k8s/backend-deployment.yaml
-                        sed -i "s|image: aruhehe/kubepay-frontend:.*|image: aruhehe/kubepay-frontend:${params.FRONTEND_DOCKER_TAG}|g" k8s/frontend-deployment.yaml
+                        sed -i "s|image: aruhehe/kubepay-backend:.*|image: aruhehe/kubepay-backend:${env.TARGET_BACKEND_TAG}|g" k8s/backend-deployment.yaml
+                        sed -i "s|image: aruhehe/kubepay-frontend:.*|image: aruhehe/kubepay-frontend:${env.TARGET_FRONTEND_TAG}|g" k8s/frontend-deployment.yaml
                     """
                 }
             }
@@ -55,8 +55,8 @@ pipeline {
                     echo "🛡️ Validating Kubernetes manifest syntax before commit..."
                     sh """
                         # Verify that the substituted image tags are actually present
-                        grep "image: aruhehe/kubepay-backend:${params.BACKEND_DOCKER_TAG}" k8s/backend-deployment.yaml
-                        grep "image: aruhehe/kubepay-frontend:${params.FRONTEND_DOCKER_TAG}" k8s/frontend-deployment.yaml
+                        grep "image: aruhehe/kubepay-backend:${env.TARGET_BACKEND_TAG}" k8s/backend-deployment.yaml
+                        grep "image: aruhehe/kubepay-frontend:${env.TARGET_FRONTEND_TAG}" k8s/frontend-deployment.yaml
                         echo "✅ Manifests successfully verified!"
                     """
                 }
