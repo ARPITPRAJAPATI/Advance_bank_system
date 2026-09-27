@@ -99,6 +99,28 @@ pipeline {
         }
         failure {
             echo "❌ CI Pipeline Failed. Please check the logs above."
+            emailext (
+                attachLog: true,
+                to: "arpitprajapati2005@gmail.com",
+                subject: "🚨 [FAILED] Kube Pay CI Pipeline - Build #${env.BUILD_NUMBER}",
+                mimeType: 'text/html',
+                body: """
+                    <!DOCTYPE html>
+                    <html>
+                    <body style="font-family: Arial, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 20px;">
+                        <div style="max-width: 600px; margin: auto; background-color: #1e293b; border-radius: 12px; padding: 24px; border: 1px solid #ef4444;">
+                            <h2 style="color: #ef4444; margin-top: 0;">🚨 CI Pipeline Failed!</h2>
+                            <p style="color: #94a3b8;">One of the CI stages (Trivy, SonarQube, OWASP, or Docker Build) has failed.</p>
+                            <p><strong>Job:</strong> ${env.JOB_NAME}</p>
+                            <p><strong>Build Number:</strong> #${env.BUILD_NUMBER}</p>
+                            <div style="margin-top: 20px;">
+                                <a href="${env.BUILD_URL}console" style="background-color: #ef4444; color: white; padding: 10px 18px; border-radius: 6px; text-decoration: none; font-weight: bold;">Inspect Failure Logs</a>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                """
+            )
         }
     }
 }
