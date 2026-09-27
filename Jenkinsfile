@@ -57,15 +57,8 @@ pipeline {
 
         stage('OWASP: Dependency-Check') {
             steps {
-                script {
-                    try {
-                        dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit --autoUpdate false', odcInstallation: 'OWASP'
-                        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-                    } catch (Exception e) {
-                        echo "⚠️ OWASP Dependency-Check warning: ${e.message}"
-                    }
-                    currentBuild.result = 'SUCCESS'
-                }
+                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit --format XML --nvdApiKey 85E00693-0DD1-4343-A874-97B42E144F64', odcInstallation: 'OWASP'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
 
