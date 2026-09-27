@@ -173,3 +173,59 @@ This document records all errors, root causes, severity levels, and exact soluti
      ```
   3. Re-create or refresh the application in ArgoCD. Once the directory exists on GitHub, `argocd-repo-server` reads the manifests and builds the live resource tree.
 
+---
+
+### 📌 ERR-09: GitHub Push Protection Rejection Triggering Misleading VS Code "Try Running Pull" Error
+- **Error Message**:
+  ```text
+  Can't push refs to remote. Try running "Pull" first to integrate your changes.
+  ```
+  *(Terminal raw error: `remote: error: GH007: Your push would contain 4 secrets of 3 different types... Push declined due to detected secrets`)*
+- **Severity**: 🔴 **High** (Blocks Git sync, potential high-severity credential exposure)
+- **Root Cause**:
+  1. Plaintext secrets (`MONGO_URI`, `JWT_SECRET`, `CLIENT_SECRET`, `REFRESH_TOKEN`) were committed inside `k8s/backend-secret.yaml` in an unpushed commit (`c8912d3`).
+  2. GitHub's native **Secret Scanning & Push Protection** actively inspects all commits during `git push`. When detected, GitHub immediately drops the connection and returns HTTP/Git hook exit code `1`.
+  3. The VS Code Git client does not parse GitHub-specific hook rejections (`GH007`); it naively defaults to prompting: *"Can't push refs to remote. Try running 'Pull' first to integrate your changes."*
+  4. Running `git pull` does NOT solve the problem because the local branch is not behind `origin/main` — rather, the local commit contains forbidden secret payloads.
+- **Resolution**:
+  1. Add Kubernetes secret patterns to `.gitignore` to prevent future tracking:
+     ```gitignore
+     # ------------------------------
+     # Kubernetes Secrets
+     # ------------------------------
+     k8s/*secret*.yaml
+     !k8s/*secret*.example.yaml
+     ```
+  2. Soft-reset the offending commit so that uncommitted changes remain staged without data loss:
+     ```bash
+     git reset --soft HEAD~1
+     ```
+  3. Untrack the live secret file from the Git index:
+     ```bash
+     git rm --cached k8s/backend-secret.yaml
+     ```
+  4. Create a sanitized template file `k8s/backend-secret.example.yaml` containing placeholder values for Git tracking.
+  5. Commit and push the clean manifests without secret payloads (`git push origin main` ➔ Success).
+  6. Apply the actual secrets directly to the Kubernetes cluster using `kubectl apply -f -` on the Master node.
+
+---
+
+### 📌 ERR-10: Namespace Mismatch Between Microservices (`default` vs `kubepay`)
+- **Error Message**:
+  ```text
+  Failed to connect to backend: http://backend:3000 -> getaddrinfo ENOTFOUND backend
+  ```
+- **Severity**: 🟡 **Medium** (Service discovery failure across isolated namespaces)
+- **Root Cause**:
+  Kubernetes namespaces provide logical isolation and separate CoreDNS search domains. 
+  When a container queries `http://backend:3000`, the resolver queries `backend.<current-namespace>.svc.cluster.local`.
+  If the `frontend` pod runs in `kubepay` but the `backend` service is deployed in `default`, simple name resolution (`http://backend:3000`) fails because cross-namespace calls mandate the Fully Qualified Domain Name (FQDN): `http://backend.default.svc.cluster.local:3000`.
+- **Resolution**:
+  Standardize all microservices and auxiliary resources under the single dedicated application namespace `kubepay`:
+  - `k8s/namespace.yaml` ➔ `name: kubepay`
+  - `k8s/backend-deployment.yaml` ➔ `namespace: kubepay`
+  - `k8s/backend-service.yaml` ➔ `namespace: kubepay`
+  - `k8s/frontend-deployment.yaml` ➔ `namespace: kubepay`
+  - `k8s/frontend-service.yaml` ➔ `namespace: kubepay`
+  - `k8s/backend-secret.yaml` ➔ `namespace: kubepay`
+

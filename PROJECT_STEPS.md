@@ -106,8 +106,9 @@ This document maintains a live, chronological record of all architecture decisio
 ### ⏳ Phase 7: GitOps CD with ArgoCD
 - [x] Deploy ArgoCD on EKS (`kubectl apply -n argocd --server-side ...`)
 - [x] Expose ArgoCD via NodePort (`443:31136/TCP`, accessed via worker node public IP)
-- [ ] Add `k8s/` manifests to Git repo and push to `origin main`
-- [ ] Create ArgoCD Application (`navpay`) pointing to `k8s/` directory
+- [x] Add production `k8s/` manifests to Git repo and push to `origin main` (`namespace.yaml`, `backend-deployment.yaml`, `backend-service.yaml`, `frontend-deployment.yaml`, `frontend-service.yaml`, `backend-secret.example.yaml`)
+- [x] Implement GitOps Secret Hygiene: Protected live secrets in `.gitignore` and applied `backend-secret` directly into `kubepay` namespace on EKS
+- [ ] Create ArgoCD Application (`kubepay`) pointing to `k8s/` directory and sync live state
 
 ---
 
