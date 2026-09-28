@@ -54,6 +54,10 @@ Unlike conventional CRUD applications, **Kube Pay** is architected around core *
 
 > 📖 **Full Architectural Specification**: See [ARCHITECTURE.md](ARCHITECTURE.md) for the complete multi-tier architectural blueprint.
 
+<p align="center">
+  <img src="docs/assets/kubepay_devsecops_architecture.png" alt="KubePay DevSecOps & GitOps Architecture Blueprint" width="100%"/>
+</p>
+
 ```mermaid
 graph TB
     subgraph CLIENT["📱 Client & Ingress Tier"]

@@ -7,6 +7,14 @@
 
 ## 🌟 High-Level Architectural Topology
 
+<p align="center">
+  <img src="docs/assets/kubepay_devsecops_architecture.png" alt="KubePay DevSecOps & GitOps Architecture Blueprint" width="100%"/>
+</p>
+
+<p align="center">
+  <img src="docs/assets/kubepay_fullstack_architecture.png" alt="KubePay Full-Stack Architecture Blueprint" width="100%"/>
+</p>
+
 The following comprehensive architecture diagram illustrates the end-to-end journey of **Kube Pay**: from client interactions, financial transaction engine, and atomic database persistence to automated multi-stage DevSecOps pipelines, GitOps continuous deployment, and real-time cluster observability.
 
 ```mermaid
