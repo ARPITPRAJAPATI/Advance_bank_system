@@ -50,7 +50,76 @@ Unlike conventional CRUD applications, **Kube Pay** is architected around core *
 
 ---
 
-## 🏛️ System Architecture & Engineering Principles
+## 🏛️ Master System Architecture & Engineering Blueprint
+
+> 📖 **Full Architectural Specification**: See [ARCHITECTURE.md](ARCHITECTURE.md) for the complete multi-tier architectural blueprint.
+
+```mermaid
+graph TB
+    subgraph CLIENT["📱 Client & Ingress Tier"]
+        User["👤 Bank Customer"]
+        ReactApp["⚛️ React 19.2 + Vite 8.2 Client<br/>• TailwindCSS v4 Luxury UI<br/>• Virtual RuPay 3D Parallax Card<br/>• Idempotency UUID Generator"]
+        Nginx["⚡ Nginx Reverse Proxy (:31100)<br/>• SPA Static Server<br/>• Proxy: /api ➔ backend:3000"]
+        User --> ReactApp
+        ReactApp -->|"HTTP :31100"| Nginx
+    end
+
+    subgraph CLOUD["☁️ AWS EKS Cluster (kubepay-cluster)"]
+        subgraph APP_NS["☸️ Namespace: kubepay"]
+            FrontendPods["🖥️ Frontend Pods (2 Replicas)"]
+            BackendSvc["🔌 ClusterIP: backend:3000"]
+            BackendPods["⚙️ Backend Microservice (2 Replicas)<br/>Node.js + Express 5 Core"]
+            Nginx --> FrontendPods
+            FrontendPods --> BackendSvc
+            BackendSvc --> BackendPods
+        end
+
+        subgraph ENGINE["🧠 Financial Transaction Core"]
+            Auth["🔐 JWT HttpOnly Cookie Shield"]
+            Idempotency["🔁 Idempotency Key Engine"]
+            Ledger["📊 Double-Entry Ledger System"]
+            ACID["💳 MongoDB ACID Multi-Doc Session"]
+            BackendPods --- Auth
+            Auth --> Idempotency
+            Idempotency --> Ledger
+            Ledger --> ACID
+        end
+
+        subgraph GITOPS["🐙 GitOps: argocd"]
+            ArgoCD["🔄 ArgoCD Controller v2.14<br/>• Syncs GitHub k8s/ ➔ EKS<br/>• Auto-Healing & Pruning"]
+            ArgoCD ==>|"Reconciles Live State"| APP_NS
+        end
+
+        subgraph MONITOR["📊 Observability: monitoring"]
+            Prometheus["🔥 Prometheus Core (:30090)"]
+            NodeExp["📈 Node Exporters (DaemonSet)"]
+            Grafana["📈 Grafana Dashboards (:32000)"]
+            Prometheus --> NodeExp
+            Prometheus --> APP_NS
+            Grafana --> Prometheus
+        end
+    end
+
+    subgraph DATA["🗄️ Database Tier"]
+        MongoDB[("🍃 MongoDB Atlas 3-Node Replica Set<br/>cluster0.6cxh2kd.mongodb.net<br/>• users • accounts • ledger • idempotency")]
+        ACID ==>|"Atomic Commit / Rollback"| MongoDB
+    end
+
+    subgraph CICD["🚀 DevSecOps CI/CD Automation (Jenkins)"]
+        GitHub[("🐙 GitHub (Advance_bank_system)")]
+        JenkinsCI["🔄 KubePay-CI (Trivy, Sonar, OWASP, Docker)"]
+        JenkinsCD["🚀 KubePay-CD (Tag Bump + [skip ci])"]
+        DockerHub[("🐳 DockerHub Registry")]
+        
+        GitHub -->|"Webhook"| JenkinsCI
+        JenkinsCI -->|"Build & Push"| DockerHub
+        JenkinsCI -->|"Trigger"| JenkinsCD
+        JenkinsCD -->|"Commit k8s/*.yaml [skip ci]"| GitHub
+        GitHub ==>|"Pulls Manifests"| ArgoCD
+    end
+```
+
+---
 
 ### 1. 🔄 Atomic Money Transfers (ACID Sessions)
 When User A sends money to User B:
