@@ -15,7 +15,13 @@ This document records all errors, root causes, severity levels, and exact soluti
 | **ERR-05** | SSH Agent Auth Failure (Wrong Username & PEM Key Format) | 🔴 **High** | Jenkins SSH Launcher / Trilead API | ✅ Resolved |
 | **ERR-06** | EKS Cluster Kubernetes Version Deprecated (1.30 EOL) | 🟡 **Medium** | AWS EKS / eksctl | ✅ Resolved |
 | **ERR-07** | ArgoCD ApplicationSet CRD Annotation Size Exceeded 256KB | 🟡 **Medium** | ArgoCD / Kubernetes CRD | ✅ Resolved |
-| **ERR-08** | ArgoCD App Creation Failure: "k8s: app path does not exist" | 🔴 **High** | ArgoCD Repo Server / Git Remote | 🔄 In Progress |
+| **ERR-08** | ArgoCD App Creation Failure: "k8s: app path does not exist" | 🔴 **High** | ArgoCD Repo Server / Git Remote | ✅ Resolved |
+| **ERR-09** | GitHub Push Protection Blocked Live Secrets | 🔴 **High** | Git / GitHub Security Scanner | ✅ Resolved |
+| **ERR-10** | Namespace Mismatch Between Microservices (`default` vs `kubepay`) | 🟡 **Medium** | Kubernetes CoreDNS / Service Discovery | ✅ Resolved |
+| **ERR-11** | OWASP Dependency-Check NVD API Rate Limit & Missing XML Report | 🔴 **High** | Jenkins CI / OWASP Tooling | ✅ Resolved |
+| **ERR-12** | GitOps Infinite CI/CD Feedback Loop via Webhook & SCM Polling | 🔥 **Critical** | Jenkins Pipeline / Git SCM / Webhook | ✅ Resolved |
+| **ERR-13** | 502 Bad Gateway / MongoDB ENOTFOUND CrashLoopBackOff | 🔥 **Critical** | Kubernetes Pods / ArgoCD Reconciliation | ✅ Resolved |
+| **ERR-14** | Jenkins SMTP Email Configuration Failure (Port 25 vs 465 SSL) | 🟡 **Medium** | Jenkins System / Gmail SMTP / email-ext | ✅ Resolved |
 
 ---
 
@@ -228,4 +234,123 @@ This document records all errors, root causes, severity levels, and exact soluti
   - `k8s/frontend-deployment.yaml` ➔ `namespace: kubepay`
   - `k8s/frontend-service.yaml` ➔ `namespace: kubepay`
   - `k8s/backend-secret.yaml` ➔ `namespace: kubepay`
+
+---
+
+### 📌 ERR-11: OWASP Dependency-Check NVD API Rate Limit & Missing XML Report
+- **Error Message**:
+  ```text
+  [Invoke Dependency-Check] (self time 969ms)
+  [Publish Dependency-Check results -- **/dependency-check-report.xml] (self time 39ms)
+  Collecting Dependency-Check artifact Unable to find Dependency-Check reports to parse
+  Build step 'Publish Dependency-Check results' marked build as failure (Exit code 13)
+  ```
+- **Severity**: 🔴 **High** (Blocks CI pipeline security scanning)
+- **Root Cause**:
+  1. The National Vulnerability Database (NVD) enforces strict rate limiting on unauthenticated IP addresses. Without an NVD API key, automated downloads fail with HTTP 403/429, causing the CLI scanner to abort prematurely with exit code 13.
+  2. Because the scan process crashed, the output file `**/dependency-check-report.xml` was never written.
+  3. The Jenkins post-build publisher plugin searched for `dependency-check-report.xml`, found no matching file, and marked the entire build as `FAILURE`.
+- **Resolution**:
+  1. Procured an official NVD API key from NIST (`85E00693-0DD1-4343-A874-97B42E144F64`).
+  2. Updated the Jenkins pipeline stage arguments to supply `--nvdApiKey`, enforce `--format XML`, and disable unused audits:
+     ```groovy
+     stage('OWASP: Dependency-Check') {
+         steps {
+             dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit --format XML --nvdApiKey 85E00693-0DD1-4343-A874-97B42E144F64', odcInstallation: 'OWASP'
+             dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+         }
+     }
+     ```
+  3. First run downloaded and cached the complete 292MB NVD database into `/home/ubuntu/tools/.../OWASP/data/odc.mv.db` on the worker node.
+  4. Subsequent scans execute incrementally in under 3 seconds without errors.
+
+---
+
+### 📌 ERR-12: GitOps CI/CD Infinite Feedback Loop via Webhook & SCM Polling
+- **Error Message**:
+  ```text
+  c.c.jenkins.GitHubPushTrigger$1#run: SCM changes detected in KubePay-CI. Triggering #14
+  ...
+  Triggering #15
+  ...
+  Triggering #16 (Infinite loop)
+  ```
+- **Severity**: 🔥 **Critical** (Server exhaustion, infinite build loop, resource starvation)
+- **Root Cause**:
+  1. **Feedback Loop Architecture**: In a monorepo setup containing both application source code and Kubernetes manifests, `KubePay-CI` triggers `KubePay-CD`. The CD job bumps image tags in `k8s/*.yaml` and runs `git push origin main`.
+  2. GitHub Webhook detects the push on `main` and pings Jenkins (`http://<master>:8080/github-webhook/`).
+  3. By default, Jenkins GitHub plugin triggers builds on any push unless explicitly configured with commit message filters.
+  4. **The Secondary SCM Bug**: Even after adding `MessageExclusion` (`(?s).*\[skip ci\].*`) and `PathRestriction` (`k8s/.*`) in Jenkins job UI, the loop persisted! Server logs revealed:
+     ```text
+     Ignored commit db26876: Found excluded message: chore(gitops) ... [skip ci]  <-- SCM #1 ignored it
+     Using strategy: Default
+     git ls-remote -h -- https://github.com/ARPITPRAJAPATI/Advance_bank_system.git
+     Changes found ➔ Triggering #21                                              <-- SCM #2 triggered it!
+     ```
+     Because the `Jenkinsfile` contained an in-pipeline `stage('Git: Code Checkout') { git branch: 'main' ... }`, Jenkins registered that as a **second SCM source**. The second SCM had `poll: true` by default without exclusions, causing it to trigger the build anyway!
+- **Resolution**:
+  1. Configured Jenkins Git SCM **Additional Behaviours**:
+     - **Ignore commits with certain messages**: `(?s).*\[skip ci\].*`
+     - **Polling ignores changes in certain paths**: `k8s/.*`
+  2. Updated `Jenkinsfile` and `gitops/Jenkinsfile-CD` to disable polling on in-pipeline checkouts:
+     ```groovy
+     stage('Git: Code Checkout') {
+         steps {
+             git branch: 'main', changelog: false, poll: false, url: 'https://github.com/ARPITPRAJAPATI/Advance_bank_system.git'
+         }
+     }
+     ```
+  3. Git Webhook now cleanly recognizes `[skip ci]`, logs `No changes`, and stops the pipeline cleanly without looping.
+
+---
+
+### 📌 ERR-13: Application 502 Bad Gateway / MongoDB ENOTFOUND CrashLoopBackOff
+- **Error Message**:
+  ```text
+  Frontend UI: "Request failed with status code 502"
+  Backend Pod Logs:
+  server is running on port 3000
+  error querySrv ENOTFOUND _mongodb._tcp.cluster0.mongodb.net
+  kubectl get pods -n kubepay:
+  backend-598c756d7b-bnzrl   0/1   CrashLoopBackOff
+  ```
+- **Severity**: 🔥 **Critical** (Banking API completely non-functional, user registration blocked)
+- **Root Cause**:
+  1. A template file named `k8s/backend-secret.example.yaml` was tracked in Git with dummy values (`cluster0.mongodb.net`).
+  2. ArgoCD watches the `k8s` directory with `selfHeal: true`. Because the example file had `kind: Secret` and `name: backend-secret`, ArgoCD automatically deployed the dummy secret to the cluster and continuously overwrote manual updates.
+  3. The backend container failed to resolve the dummy MongoDB cluster address and crashed on startup, leaving Nginx with no upstream servers (returning HTTP 502).
+- **Resolution**:
+  1. Renamed `k8s/backend-secret.example.yaml` to `k8s/backend-secret.example` so ArgoCD does not parse it as a Kubernetes manifest.
+  2. Applied the production `backend-secret.yaml` directly to the `kubepay` namespace on EKS:
+     ```bash
+     kubectl apply -f k8s/backend-secret.yaml
+     ```
+  3. Executed rolling restart of backend pods:
+     ```bash
+     kubectl rollout restart deployment backend -n kubepay
+     ```
+  4. Both backend pods transitioned to `1/1 Running` with 0 restarts. ArgoCD health updated to **`Healthy`** 🟢 and user registration / fund transfers started working flawlessly.
+
+---
+
+### 📌 ERR-14: Jenkins SMTP Email Configuration Failure (Port 25 vs 465 SSL)
+- **Error Message**:
+  ```text
+  Failed to send out e-mail: com.sun.mail.util.MailConnectException: Couldn't connect to host, port: smtp.gmail.com, 25; timeout -1
+  ```
+- **Severity**: 🟡 **Medium** (Build notifications fail to deliver)
+- **Root Cause**:
+  1. Cloud providers (including AWS EC2) block outbound traffic on port `25` by default to prevent spam.
+  2. Google SMTP requires secure TLS or SSL authentication with an App Password.
+  3. Default Jenkins mail configuration uses port `25` with `useSsl: false`.
+- **Resolution**:
+  1. Generated 16-character Google App Password via Google Account Security settings.
+  2. Configured both **Mailer** and **Extended Email Notification (email-ext)** in Jenkins System:
+     - **SMTP Server**: `smtp.gmail.com`
+     - **SMTP Port**: `465`
+     - **Authentication**: `arpitprajapati2005@gmail.com` + Google App Password
+     - **Use SSL**: `true`
+     - **Default Content Type**: `HTML (text/html)`
+  3. Verified via Jenkins test email utility ➔ Success! Deployment alerts now deliver automatically upon pipeline completion.
+
 

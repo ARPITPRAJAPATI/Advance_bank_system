@@ -882,6 +882,148 @@ In enterprise DevOps, there are three primary tiers of secret management:
 #### Q2: *"What is Idempotency in Kubernetes and how does it relate to `kubectl apply`?"*
 > **Answer:** *"Idempotency means that executing an operation multiple times produces the exact same result as executing it once, without causing unintended side effects. Kubernetes manifest reconciliation via `kubectl apply` and ArgoCD is declarative and idempotent: it compares the live cluster state in etcd with the desired state in Git. If a resource like a Namespace or Service already exists with identical specifications, Kubernetes marks it as `unchanged` rather than throwing a collision error."*
 
+---
+
+## 🔁 Module 9: The GitOps Infinite Feedback Loop & Monorepo Architecture
+
+### 1. The Anatomy of an Automated CI/CD Feedback Loop
+
+In a single repository containing both application source code (`backend/`, `frontend/`) and Kubernetes deployment manifests (`k8s/`), an automated feedback loop occurs naturally unless actively mitigated:
+
+```text
+[1] Developer pushes code (backend/server.js)
+       │
+       ▼
+[2] GitHub Webhook fires ➔ Jenkins triggers KubePay-CI
+       │
+       ▼
+[3] CI completes build & pushes Docker images (backend:23, frontend:23)
+       │
+       ▼
+[4] CI triggers KubePay-CD (GitOps bump job)
+       │
+       ▼
+[5] CD edits k8s/backend-deployment.yaml and runs `git push origin main`
+       │
+       ▼
+[6] GitHub sees new commit on `main` ➔ Webhook fires again!
+       │
+       ▼
+[7] Jenkins receives Webhook and starts KubePay-CI (#24) ➔ INFINITE LOOP!
+```
+
+---
+
+### 2. The Hidden Bug: Why Adding `[skip ci]` Wasn't Enough (Secondary SCM)
+
+Even when configuring Git SCM exclusions (`MessageExclusion: (?s).*\[skip ci\].*` and `PathRestriction: k8s/.*`) in the Jenkins Job UI, builds kept triggering! 
+
+#### 🔬 The Root Cause Analysis:
+When a Declarative Pipeline specifies an in-pipeline checkout:
+```groovy
+stage('Git: Code Checkout') {
+    steps {
+        git branch: 'main', url: 'https://github.com/.../repo.git'
+    }
+}
+```
+Jenkins registers that as a **second SCM source (SCM #2)** in addition to the primary Job SCM (SCM #1).
+1. When GitHub Webhook arrives, Jenkins evaluates **SCM #1**:
+   `Ignored commit: Found excluded message: ... [skip ci]` ➔ SCM #1 correctly ignores it!
+2. But Jenkins then evaluates **SCM #2**:
+   Because the in-pipeline `git` step defaults to `poll: true` and has no exclusions configured, SCM #2 runs `git ls-remote`, reports `Changes found`, and **triggers the build anyway!**
+
+#### ✅ The Permanent Fix:
+Disable polling and changelog registration on all in-pipeline checkouts:
+```groovy
+git branch: 'main', changelog: false, poll: false, url: "${env.REPO_URL}"
+```
+This forces Jenkins to only consult SCM #1 (which enforces `[skip ci]` and `k8s/.*` filters), completely severing the feedback loop.
+
+---
+
+### 3. Production Standard: The Two-Repository Model
+
+In enterprise environments (FAANG, Unicorns), Monorepo GitOps feedback loops are eliminated architecturally through repository separation:
+
+```text
+┌─────────────────────────────────┐
+│     APPLICATION REPOSITORY      │  <-- Monitored by Webhook & CI Pipeline
+│  • frontend/, backend/          │  <-- Only Developers commit here
+│  • Dockerfiles, Jenkinsfile-CI  │
+└──────────────┬──────────────────┘
+               │ (Builds image & calls CD)
+               ▼
+┌─────────────────────────────────┐
+│       GITOPS REPOSITORY         │  <-- Watched by ArgoCD only
+│  • k8s/*.yaml, Helm values      │  <-- Only Jenkins CD Bot commits here
+│  • NO WEBHOOK TO JENKINS CI!    │  <-- Zero possibility of infinite loops
+└─────────────────────────────────┘
+```
+
+#### 🚀 Alternative: ArgoCD Image Updater (Zero Git Commits)
+Modern teams deploy **ArgoCD Image Updater** in-cluster:
+- Jenkins CI pushes the new image tag directly to AWS ECR or DockerHub.
+- ArgoCD Image Updater polls the container registry directly.
+- When a new tag is detected, ArgoCD automatically updates the in-cluster pods without committing back to Git.
+
+---
+
+## 🛡️ Module 10: OWASP Dependency-Check & NVD Database Sync
+
+### 1. Why Did OWASP Fail with Exit Code 13?
+- The National Vulnerability Database (NVD) enforces strict IP rate limits on unauthenticated API calls.
+- Without an API key, the OWASP scanner attempts to scrape the NVD REST API, gets blocked (`HTTP 403 / 429`), and aborts prematurely with exit code 13.
+- When the process aborts, no `dependency-check-report.xml` is generated, causing the Jenkins artifact publisher to fail the build.
+
+### 2. The Caching Engine on Worker Node
+- By injecting an official NIST NVD API key (`--nvdApiKey`), the scanner downloads the full CVE database (~292 MB).
+- The database is cached locally as an embedded H2/MV database:
+  `/home/ubuntu/tools/.../OWASP/data/odc.mv.db`
+- Subsequent pipeline runs only download incremental daily CVE updates in **under 3 seconds**, preventing pipeline delays.
+
+---
+
+## 📊 Module 11: Production Kubernetes Monitoring Architecture
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                        AWS EKS CLUSTER                                 │
+│                                                                        │
+│   ┌──────────────────────────┐         ┌───────────────────────────┐   │
+│   │     PROMETHEUS CORE      │────────▶│          GRAFANA          │   │
+│   │  • Time-Series Database  │         │  • Visual Analytics Dash  │   │
+│   │  • PromQL Query Engine   │         │  • Pre-built K8s Panels   │   │
+│   └────────────▲─────────────┘         └─────────────┬─────────────┘   │
+│                │ (Scrapes Metrics)                   │                 │
+│                ├──────────────────────┬──────────────┤                 │
+│                ▼                      ▼              ▼                 │
+│     ┌─────────────────────┐  ┌──────────────────┐  NodePort :32000     │
+│     │    NODE EXPORTER    │  │ KUBE-STATE-METS  │                      │
+│     │ (DaemonSet on EC2)  │  │ (Pod/Deploy API) │                      │
+│     └─────────────────────┘  └──────────────────┘                      │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 1. Prometheus Operator vs Standalone Prometheus
+- `kube-prometheus-stack` uses the **Prometheus Operator Pattern**.
+- Instead of manually editing static `prometheus.yaml` configuration files, monitoring targets are defined declaratively via Kubernetes Custom Resource Definitions (CRDs):
+  - `ServiceMonitor`: Tells Prometheus which services to scrape automatically based on Kubernetes label selectors.
+  - `PrometheusRule`: Defines alerting thresholds (e.g. CPU > 80% for 5 minutes).
+
+### 2. Node Exporter DaemonSet
+- Runs as a **DaemonSet** (exactly one instance per Kubernetes worker node).
+- Queries Linux `/proc` and `/sys` filesystems directly to collect hardware metrics (CPU ticks, RAM allocations, disk I/O, network bandwidth).
+
+### 3. Essential PromQL Cheat Sheet
+| Query | Description |
+| :--- | :--- |
+| `up` | Returns `1` if the scrape target is reachable, `0` if down |
+| `kube_pod_status_phase{namespace="kubepay"}` | Current lifecycle state of application pods |
+| `sum(rate(container_cpu_usage_seconds_total{namespace="kubepay"}[5m])) by (pod)` | Real-time CPU core usage per pod |
+| `container_memory_working_set_bytes{namespace="kubepay"}` | Actual memory consumed by microservice containers |
+
+
 
 
 

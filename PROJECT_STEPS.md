@@ -103,24 +103,93 @@ This document maintains a live, chronological record of all architecture decisio
 
 ---
 
-### ⏳ Phase 7: GitOps CD with ArgoCD
-- [x] Deploy ArgoCD on EKS (`kubectl apply -n argocd --server-side ...`)
-- [x] Expose ArgoCD via NodePort (`443:31136/TCP`, accessed via worker node public IP)
-- [x] Add production `k8s/` manifests to Git repo and push to `origin main` (`namespace.yaml`, `backend-deployment.yaml`, `backend-service.yaml`, `frontend-deployment.yaml`, `frontend-service.yaml`, `backend-secret.example.yaml`)
-- [x] Implement GitOps Secret Hygiene: Protected live secrets in `.gitignore` and applied `backend-secret` directly into `kubepay` namespace on EKS
-- [ ] Create ArgoCD Application (`kubepay`) pointing to `k8s/` directory and sync live state
+### ✅ Phase 7: GitOps Continuous Delivery with ArgoCD
+1. **ArgoCD Deployment on EKS**:
+   - Installed official ArgoCD v2.14 manifest using server-side apply:
+     ```bash
+     kubectl create namespace argocd
+     kubectl apply -n argocd --server-side -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+     ```
+2. **Expose ArgoCD Server**:
+   - Patched `argocd-server` service to NodePort:
+     ```bash
+     kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort", "ports": [{"port": 80, "targetPort": 8080, "nodePort": 31539}, {"port": 443, "targetPort": 8080, "nodePort": 31136}]}}'
+     ```
+   - Dashboard Accessible at: `https://13.232.59.33:31136` (Username: `admin`).
+3. **Manifests & GitOps Secret Hygiene**:
+   - Added production manifests in `k8s/`: `namespace.yaml`, `backend-deployment.yaml`, `backend-service.yaml`, `frontend-deployment.yaml`, `frontend-service.yaml`.
+   - Renamed example secret to `k8s/backend-secret.example` to prevent ArgoCD from applying placeholder credentials.
+   - Applied real MongoDB Atlas secret directly to `kubepay` namespace out-of-band:
+     ```bash
+     kubectl apply -f k8s/backend-secret.yaml
+     ```
+4. **ArgoCD Application Creation (`navpay`)**:
+   - Automated sync policy enabled with `prune: true` and `selfHeal: true`.
+   - Watches `https://github.com/ARPITPRAJAPATI/Advance_bank_system.git`, path: `k8s/`.
+   - Status: **`Synced` & `Healthy`** 🟢.
 
 ---
 
-### ⏳ Phase 7: Jenkins CI/CD Pipeline
-- [ ] Configure Jenkins credentials (DockerHub, GitHub, SonarQube token)
-- [ ] Run CI Pipeline: Checkout ➔ Trivy FS ➔ OWASP ➔ SonarQube ➔ Docker Build & Push
-- [ ] Run CD Pipeline: Update K8s manifests image tag ➔ Trigger GitOps auto-sync
+### ✅ Phase 8: End-to-End Enterprise CI/CD Pipelines (Jenkins)
+1. **Jenkins Credentials Configured**:
+   - `docker` (DockerHub PAT for user `aruhehe`)
+   - `sonar-token` (SonarQube analysis token `squ_f0828d9...`)
+   - `github` (GitHub Classic PAT with repo scope for automated GitOps commits)
+   - `worker-ssh-key` (Slave agent authentication)
+2. **CI Pipeline (`KubePay-CI`)**:
+   - Stages: Workspace Cleanup ➔ Git Checkout (poll: false) ➔ Trivy Filesystem Scan ➔ SonarQube Analysis ➔ Quality Gate Wait ➔ OWASP Dependency-Check (NVD XML format) ➔ Docker Build & Push (`backend:TAG`, `frontend:TAG`) ➔ Trivy Container Scan ➔ Trigger CD Pipeline.
+   - Security Integration: NVD API Key `85E00693-...` configured to cache 292MB CVE database locally on worker node (`/home/ubuntu/tools/.../OWASP/data/odc.mv.db`), reducing scan time from minutes to 3 seconds.
+3. **CD Pipeline (`KubePay-CD`)**:
+   - Clones GitOps repo, updates deployment image tags via `sed`, verifies manifest integrity via `grep`, commits with `[skip ci]`, and pushes to GitHub `main` for ArgoCD reconciliation.
+4. **GitOps Infinite Loop Prevention**:
+   - Configured Git SCM `MessageExclusion` with pattern `(?s).*\[skip ci\].*`.
+   - Configured `PathRestriction` on `k8s/.*`.
+   - Added `changelog: false, poll: false` to in-pipeline checkout stages to prevent secondary SCM registration.
+   - Webhook auto-triggers on code changes, but automatically suppresses builds on GitOps version bumps.
+5. **Automated Email Notifications**:
+   - Configured Jenkins Master with Gmail SMTP (`smtp.gmail.com:465`, SSL enabled) using Google App Passwords.
+   - Automated HTML deployment summaries delivered directly to `arpitprajapati2005@gmail.com`.
 
 ---
 
-### ⏳ Phase 8: Cluster Monitoring & Clean-Up
-- [ ] Install Helm 3
-- [ ] Deploy `kube-prometheus-stack` (Prometheus + Grafana) via Helm
-- [ ] Expose Grafana on NodePort and view banking application metrics
-- [ ] Teardown/Cleanup script to avoid unnecessary AWS charges
+### ✅ Phase 9: Cluster Monitoring & Observability (Prometheus & Grafana)
+1. **Helm 3 Installation**:
+   - Installed Helm 3 CLI client on Master EC2 (`curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash`).
+2. **Deploy Prometheus Community Stack**:
+   - Added official Helm repo:
+     ```bash
+     helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+     helm repo update
+     helm install prometheus prometheus-community/kube-prometheus-stack -n monitoring --create-namespace
+     ```
+   - Automatically provisions Prometheus Operator, AlertManager, Node Exporter DaemonSets, and Grafana.
+3. **Expose Monitoring Dashboards via NodePort**:
+   - Grafana exposed on NodePort `32000`:
+     ```bash
+     kubectl patch svc prometheus-grafana -n monitoring -p '{"spec": {"type": "NodePort", "ports": [{"port": 80, "targetPort": 3000, "nodePort": 32000}]}}'
+     ```
+   - Prometheus Server exposed on NodePort `30090`:
+     ```bash
+     kubectl patch svc prometheus-kube-prometheus-prometheus -n monitoring -p '{"spec": {"type": "NodePort", "ports": [{"port": 9090, "targetPort": 9090, "nodePort": 30090}]}}'
+     ```
+4. **Live Observability Verification**:
+   - Retrieved Grafana admin credentials via Kubernetes secret:
+     ```bash
+     kubectl get secret --namespace monitoring prometheus-grafana -o jsonpath="{.data.admin-password}" | base64 --decode
+     ```
+   - Verified live metrics scraping across nodes, pods in `kubepay` namespace, and cluster resource utilization.
+
+---
+
+## 🌐 Live Production Endpoints & Access Directory
+
+| Service | Access URL | Port / Protocol | Credentials / Notes |
+| :--- | :--- | :--- | :--- |
+| **Kube Pay Banking App** | `http://13.232.59.33:31100` | NodePort `31100` / HTTP | Full-Stack UI (Register, Login, Transfers) |
+| **Jenkins Controller** | `http://13.126.10.89:8080` | Port `8080` / HTTP | CI/CD Pipelines (`KubePay-CI`, `KubePay-CD`) |
+| **SonarQube Server** | `http://13.126.10.89:9000` | Port `9000` / HTTP | Static Code Analysis & Quality Gate |
+| **ArgoCD Dashboard** | `https://13.232.59.33:31136` | NodePort `31136` / HTTPS | User: `admin` (Syncs GitHub `k8s/` to EKS) |
+| **Grafana Dashboard** | `http://13.232.59.33:32000` | NodePort `32000` / HTTP | User: `admin`, Password in Kubernetes Secret |
+| **Prometheus Server** | `http://13.232.59.33:30090` | NodePort `30090` / HTTP | Raw PromQL Metrics & Target Status |
+| **Alternative EKS Node** | `http://13.127.50.2:31100` | NodePort `31100` / HTTP | Redundant node endpoint for banking app |
+

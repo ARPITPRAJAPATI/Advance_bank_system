@@ -240,22 +240,70 @@ docker-compose down
 
 ---
 
-## 🚀 CI/CD & DevOps Pipeline (Jenkins)
+## 🚀 Enterprise DevSecOps & GitOps Architecture
 
-The project includes an enterprise declarative Jenkins pipeline (`jenkins`) covering:
+The application is deployed on **AWS EKS** following production-grade **DevSecOps & GitOps** standards:
 
-1. **Parameter Validation**: Enforces mandatory Docker tag arguments.
-2. **Code Checkout**: Clones source repository cleanly.
-3. **Security Scans**:
-   - **Trivy**: Comprehensive filesystem vulnerability scan.
-   - **OWASP Dependency-Check**: Vulnerability analysis of third-party dependencies.
-4. **Code Quality**:
-   - **SonarQube Analysis & Quality Gates**: Enforces strict static code analysis and test metrics.
-5. **Environment Configuration**: Automated environment setup scripts for backend & frontend.
-6. **Containerization**:
-   - Builds optimized Docker images for frontend and backend.
-   - Pushes signed images to Docker Hub.
-7. **Automated CD Trigger**: Triggers downstream deployment jobs upon pipeline success.
+```text
+┌─────────────────┐      Webhook      ┌─────────────────────────┐      Triggers      ┌─────────────────────────┐
+│  Developer Git  │──────────────────▶│  Jenkins CI Pipeline   │───────────────────▶│  Jenkins CD Pipeline   │
+│  (origin/main)  │                   │ (Sonar, OWASP, Trivy)   │                    │ (GitOps Version Bump)   │
+└─────────────────┘                   └───────────┬─────────────┘                    └────────────┬────────────┘
+                                                  │                                               │
+                                           Pushes │                                        Pushes │ [skip ci]
+                                                  ▼                                               ▼
+                                      ┌───────────────────────┐                      ┌─────────────────────────┐
+                                      │   DockerHub Registry  │                      │    GitOps Manifests     │
+                                      │ (backend:TAG, front)  │                      │  (k8s/*.yaml on GitHub) │
+                                      └───────────────────────┘                      └────────────┬────────────┘
+                                                                                                  │
+                                              ┌───────────────────────────────────────────────────┘
+                                              ▼ Pulls Desired State
+                                      ┌───────────────────────┐
+                                      │  ArgoCD Reconciliation│
+                                      │   (Synced & Healthy)  │
+                                      └───────────┬───────────┘
+                                                  │
+                                                  ▼ Synchronizes Live Pods
+                                      ┌───────────────────────┐                      ┌─────────────────────────┐
+                                      │    AWS EKS Cluster    │◀─────────────────────│  Prometheus & Grafana   │
+                                      │  (kubepay namespace)  │  Scrapes Live Stats  │ (Observability Stack)   │
+                                      └───────────────────────┘                      └─────────────────────────┘
+```
+
+### 1. 🔍 Automated Continuous Integration (`KubePay-CI`)
+- **Node-Isolated Build Agent**: Master delegates all build workloads to an Ubuntu 22.04 SSH agent (`Node`).
+- **Security Scanners**:
+  - **Trivy FS**: Scans source directories for vulnerabilities before compiling.
+  - **SonarQube Static Analysis**: Enforces clean code quality gates (`waitForQualityGate`).
+  - **OWASP Dependency-Check**: Scans third-party NPM dependencies against the official NIST NVD database cached locally via API key.
+- **Image Artifacts**: Builds multi-stage Docker images (`aruhehe/kubepay-backend`, `aruhehe/kubepay-frontend`) tagged with `BUILD_NUMBER` and pushes to DockerHub.
+- **Trivy Image Scan**: Scans generated container images for OS-level CVEs before deployment.
+
+### 2. ⚡ Declarative GitOps CD (`KubePay-CD` + ArgoCD)
+- **Automated Version Bumping**: Downstream CD job parses image tags, updates `k8s/*.yaml` deployment manifests via `sed`, and commits with `[skip ci]`.
+- **Infinite Loop Defense**: Configured Git SCM exclusions (`(?s).*\[skip ci\].*` and `k8s/.*`) with non-polling pipeline checkouts to prevent webhook feedback loops.
+- **ArgoCD Reconciliation**: In-cluster ArgoCD controller detects manifest updates on GitHub and performs rolling updates across EKS pods with zero downtime.
+
+### 3. 📊 Full-Stack Observability (Prometheus & Grafana)
+- **Prometheus Operator**: Automatically discovers and scrapes Kubernetes API metrics, node hardware counters, and application pods.
+- **Node Exporter DaemonSets**: Real-time CPU, RAM, disk, and network monitoring across all physical EC2 cluster nodes.
+- **Grafana Live Dashboards**: Visual performance dashboards filtered by the `kubepay` namespace.
+
+---
+
+## 🌐 Live Production Endpoints
+
+| Service | Access URL | Port / Protocol | Credentials / Notes |
+| :--- | :--- | :--- | :--- |
+| **Kube Pay Banking App** | `http://13.232.59.33:31100` | NodePort `31100` / HTTP | Full-Stack UI (Register, Login, Transfers) |
+| **Jenkins Controller** | `http://13.126.10.89:8080` | Port `8080` / HTTP | CI/CD Automation (`KubePay-CI`, `KubePay-CD`) |
+| **SonarQube Server** | `http://13.126.10.89:9000` | Port `9000` / HTTP | Static Code Analysis & Quality Gates |
+| **ArgoCD Dashboard** | `https://13.232.59.33:31136` | NodePort `31136` / HTTPS | User: `admin` (Syncs GitHub `k8s/` to EKS) |
+| **Grafana Dashboard** | `http://13.232.59.33:32000` | NodePort `32000` / HTTP | User: `admin`, Password in Kubernetes Secret |
+| **Prometheus Server** | `http://13.232.59.33:30090` | NodePort `30090` / HTTP | Raw PromQL Metrics & Target Status |
+| **Alternative EKS Node** | `http://13.127.50.2:31100` | NodePort `31100` / HTTP | Redundant node endpoint for banking app |
+
 
 ---
 
