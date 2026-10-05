@@ -2,34 +2,33 @@ const mongoose = require('mongoose');
 const ledgerModel = require('./ledger.model');
 const crypto = require("crypto");
 const { $where } = require('./user.model');
-const accountSchema =new mongoose.Schema({
-    user:{
-        type: mongoose.Schema.Types.ObjectId,
-        ref:"user",
-        required: [true,"Account must be associated with a user"],
-        index: true
+const accountSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "user",
+    required: [true, "Account must be associated with a user"],
+    index: true
+  },
+  status: {
+    type: String,
+    enum: {
+      values: ["ACTIVE", "FROZEN", "CLOSED"],
+      message: "status can be either active, frozen or closed"
     },
-    status:{
-        type: String,
-        enum: {
-            values: ["ACTIVE","FROZEN","CLOSED"],
-            message:"status can be either active, frozen or closed"
+    default: "ACTIVE"
+  },
+  currency: {
+    type: String,
+    required: [true, "currency is required for creating account"],
+    default: "INR"
+  },
 
-        },
-        default: "ACTIVE"
-    },
-    currency:{
-        type: String,
-        required:[true,"currency is required for creating account"],
-        default: "INR"
-    },
-    
-},{timestamps:true})
+}, { timestamps: true })
 
 
 accountSchema.index({
-     user:1,
-     status:1
+  user: 1,
+  status: 1
 })
 
 accountSchema.methods.getBalance = async function () {
@@ -68,6 +67,6 @@ accountSchema.methods.getBalance = async function () {
   return totalCredit - totalDebit
 }
 
-const accountModel = mongoose.model("account",accountSchema)
+const accountModel = mongoose.model("account", accountSchema)
 
 module.exports = accountModel;
