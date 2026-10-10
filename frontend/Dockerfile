@@ -10,7 +10,7 @@ RUN npm install
 COPY . .
 
 RUN npm run build
-
+..
 
 # Production stage
 FROM nginx:alpine
