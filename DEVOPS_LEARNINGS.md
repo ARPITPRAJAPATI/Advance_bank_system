@@ -1,641 +1,367 @@
-# 🚀 KubePay DevSecOps, GitOps & Cloud Architecture Master Deep Dive
+# 🚀 KubePay DevSecOps, GitOps & Cloud Architecture Master Learning Guide
 > **Repository:** KubePay (Advance Banking System)  
-> **Component:** Continuous Integration, Automated Security Gates, GitOps CD, Kubernetes Orchestration & Terraform IaC  
-> **Tech Stack:** Jenkins, Trivy, SonarQube, OWASP Dependency-Check, Docker, ArgoCD, Kubernetes (EKS), Terraform, Prometheus, Grafana  
+> **Focus:** High-Yield Visual Architecture, Shift-Left DevSecOps, Declarative GitOps & Kubernetes SRE  
 > **Author:** Arpit Prajapati  
-> **Target Audience:** DevOps Engineers, DevSecOps Specialists, Site Reliability Engineers (SRE), Cloud Architects
+> **Format:** Diagram-Driven, Concept-First (Targeted Code Snippets)
 
 ---
 
-## 📑 Table of Contents
-1. [High-Level DevSecOps & Cloud Topology](#1-high-level-devsecops--cloud-topology)
-2. [File-by-File Deep Dive](#2-file-by-file-deep-dive)
-   - [2.1 `Jenkinsfile` & The 10-Stage DevSecOps CI Pipeline](#21-jenkinsfile--the-10-stage-devsecops-ci-pipeline)
-   - [2.2 `gitops/Jenkinsfile-CD` & The GitOps Continuous Delivery Bridge](#22-gitopsjenkinsfile-cd--the-gitops-continuous-delivery-bridge)
-   - [2.3 ArgoCD Engine & In-Cluster Auto-Healing Architecture](#23-argocd-engine--in-cluster-auto-healing-architecture)
-   - [2.4 `k8s/backend-deployment.yaml` & `backend-service.yaml`](#24-k8sbackend-deploymentyaml--backend-serviceyaml)
-   - [2.5 `k8s/frontend-deployment.yaml` & `frontend-service.yaml`](#25-k8sfrontend-deploymentyaml--frontend-serviceyaml)
-   - [2.6 `k8s/backend-secret.example` & Kubernetes Secret Hygiene](#26-k8sbackend-secretexample--kubernetes-secret-hygiene)
-   - [2.7 `terraform/ec2.tf` & Declarative Infrastructure Automation](#27-terraformec2tf--declarative-infrastructure-automation)
-   - [2.8 Prometheus & Grafana Observability Helm Stack](#28-prometheus--grafana-observability-helm-stack)
-3. [The Infinite CI/CD Loop Nightmare & The Triple-Shield Defense](#3-the-infinite-cicd-loop-nightmare--the-triple-shield-defense)
-4. [Push-Based vs Pull-Based Deployments: The Security Rationale](#4-push-based-vs-pull-based-deployments-the-security-rationale)
-5. [Production SRE Troubleshooting & Playbooks](#5-production-sre-troubleshooting--playbooks)
-6. [Senior DevOps, SRE & Cloud Architect Interview Q&A](#6-senior-devops-sre--cloud-architect-interview-qa)
+## 📑 Visual Table of Contents
+1. [End-to-End DevSecOps, GitOps & Cloud Topology](#1-end-to-end-devsecops-gitops--cloud-topology)
+2. [DevSecOps CI Pipeline (`Jenkinsfile`) & Shift-Left Security](#2-devsecops-ci-pipeline-jenkinsfile--shift-left-security)
+3. [GitOps Continuous Delivery (`Jenkinsfile-CD` & ArgoCD)](#3-gitops-continuous-delivery-jenkinsfile-cd--argocd)
+4. [Kubernetes Cluster Architecture & Networking Mesh](#4-kubernetes-cluster-architecture--networking-mesh)
+5. [Infrastructure as Code (Terraform) & Cloud Observability](#5-infrastructure-as-code-terraform--cloud-observability)
+6. [Production SRE Failure Scenarios & Troubleshooting Playbooks](#6-production-sre-failure-scenarios--troubleshooting-playbooks)
+7. [Senior DevOps, SRE & Cloud Architect Interview Flashcards](#7-senior-devops-sre--cloud-architect-interview-flashcards)
 
 ---
 
-## 1. High-Level DevSecOps & Cloud Topology
+## 1. End-to-End DevSecOps, GitOps & Cloud Topology
 
-The KubePay platform follows a **Shift-Left DevSecOps** and **Declarative GitOps** paradigm. Security scans and static code analysis happen *before* compilation, and the deployment mechanism completely eliminates the need for Jenkins to hold sensitive Kubernetes cluster credentials.
+The KubePay deployment ecosystem bridges developer commits, automated security analysis, container registry publishing, and in-cluster GitOps reconciliation:
 
 ```mermaid
 flowchart TD
-    subgraph Developer_Workstation ["Developer Layer"]
-        Dev["Developer"] -->|1. git push origin main| GitHub["GitHub Repository (main branch)"]
+    subgraph Developer ["Developer Layer"]
+        Dev["Dev Workstation"] -->|1. git push origin main| GitHubApp["GitHub: Application Code"]
     end
 
-    subgraph CI_Pipeline ["Jenkins DevSecOps CI Pipeline (Agent: Node)"]
-        Clean["cleanWs()"]
-        Checkout["Git Checkout (poll: false)"]
-        TrivyFS["Trivy: Filesystem Scan (Secrets & CVEs)"]
-        Sonar["SonarQube: Code Quality & Gate"]
-        OWASP["OWASP Dep-Check (NVD XML Cached)"]
-        DockerBuild["Docker Build & Tag (:BUILD_NUM & :latest)"]
-        TrivyImg["Trivy: Container Image Scan"]
-        DockerPush["Docker Hub Registry (Push)"]
-        TriggerCD["Trigger: GitOps CD Pipeline"]
+    subgraph Jenkins_CI ["Jenkins DevSecOps CI (Agent: Node)"]
+        Clean["cleanWs()"] --> GitPull["Git Checkout"]
+        GitPull --> TrivyFS["Trivy Filesystem Scan (Secrets & CVEs)"]
+        TrivyFS --> Sonar["SonarQube (Static Analysis & Quality Gate)"]
+        Sonar --> OWASP["OWASP Dep-Check (NVD XML Cached)"]
+        OWASP --> DockerBuild["Docker Build (Multi-Stage)"]
+        DockerBuild --> TrivyImg["Trivy Image Scan (Base OS Layers)"]
+        TrivyImg --> DockerPush["Docker Hub Registry (Push :BUILD_NUM & :latest)"]
+        DockerPush --> TriggerCD["Trigger: KubePay-CD Pipeline"]
     end
 
-    GitHub -->|2. Webhook Trigger| Clean
-    Clean --> Checkout --> TrivyFS --> Sonar --> OWASP --> DockerBuild --> TrivyImg --> DockerPush --> TriggerCD
+    GitHubApp -->|Webhook Ping| Clean
 
-    subgraph CD_Pipeline ["Jenkins GitOps CD Pipeline (KubePay-CD)"]
-        StreamEdit["sed -i Manifest Image Tags"]
-        PreFlight["grep Pre-Flight Manifest Validation"]
-        CommitGitOps["git commit [skip ci] & push"]
+    subgraph Jenkins_CD ["Jenkins GitOps CD Pipeline"]
+        SedUpdate["sed -i: Bump Image Tag in k8s/*.yaml"]
+        PreFlight["grep: Pre-Flight Manifest Validation"]
+        GitCommit["git commit [skip ci] & push to GitHub"]
+        SedUpdate --> PreFlight --> GitCommit
     end
 
-    TriggerCD --> StreamEdit --> PreFlight --> CommitGitOps
-    CommitGitOps -->|3. Manifest Update| GitHub
+    TriggerCD --> SedUpdate
+    GitCommit -->|2. Updated Manifests| GitHubGitOps["GitHub: k8s/ Manifests"]
 
-    subgraph K8s_Cluster ["Kubernetes Production Cluster (AWS EKS)"]
+    subgraph EKS_Cluster ["Kubernetes Production Cluster (AWS EKS)"]
         subgraph ArgoCD_Namespace ["Namespace: argocd"]
-            ArgoController["ArgoCD Application Controller<br/>(Polls Git every 3m / Webhook)"]
+            ArgoController["ArgoCD Controller (Continuous Reconciliation & Self-Heal)"]
         end
 
         subgraph KubePay_Namespace ["Namespace: kubepay"]
             FE_Ingress["Frontend Service (NodePort: 31100)"]
-            FE_Pods["Frontend Pods (Nginx SPA Replicas: 2)"]
-            BE_ClusterIP["Backend Service (ClusterIP: 3000)"]
+            FE_Pods["Frontend Pods (Nginx Replicas: 2)"]
+            BE_Svc["Backend Service (ClusterIP: 3000)"]
             BE_Pods["Backend Pods (Node.js Replicas: 2)"]
-            Secrets["K8s Secrets (envFrom: secretRef)"]
         end
 
         subgraph Monitoring_Namespace ["Namespace: monitoring"]
             Prometheus["Prometheus Server (NodePort: 30090)"]
-            Grafana["Grafana Dashboard (NodePort: 32000)"]
+            Grafana["Grafana Dashboards (NodePort: 32000)"]
         end
     end
 
-    ArgoController -->|4. Pull Desired State| GitHub
-    ArgoController -->|5. Declarative Reconciliation & Self-Heal| KubePay_Namespace
+    ArgoController -->|3. Pull Desired State| GitHubGitOps
+    ArgoController -->|4. Declarative Sync| KubePay_Namespace
+    FE_Ingress --> FE_Pods
+    FE_Pods -->|CoreDNS Proxy /api| BE_Svc
+    BE_Svc --> BE_Pods
     Prometheus -->|Scrape Metrics (15s)| KubePay_Namespace
     Grafana -->|Visualize Health| Prometheus
 ```
 
 ---
 
-## 2. File-by-File Deep Dive
+## 2. DevSecOps CI Pipeline (`Jenkinsfile`) & Shift-Left Security
 
----
+### 2.1 Shift-Left Security Architecture: Pre-Build vs. Post-Build Scans
 
-### 2.1 `Jenkinsfile` & The 10-Stage DevSecOps CI Pipeline
-
-```groovy
-pipeline {
-    agent { label 'Node' }
-
-    environment {
-        SONAR_HOME      = tool 'Sonar'
-        DOCKER_USER     = 'aruhehe'
-        BACKEND_IMAGE   = 'aruhehe/kubepay-backend'
-        FRONTEND_IMAGE  = 'aruhehe/kubepay-frontend'
-        TAG             = "${params.DOCKER_TAG ?: env.BUILD_NUMBER}"
-    }
-
-    parameters {
-        string(name: 'DOCKER_TAG', defaultValue: '', description: 'Optional custom tag. Leave empty to auto-use Jenkins BUILD_NUMBER')
-    }
-
-    stages {
-        stage('Workspace Cleanup') {
-            steps {
-                cleanWs()
-            }
-        }
-
-        stage('Git: Code Checkout') {
-            steps {
-                git branch: 'main', changelog: false, poll: false, url: 'https://github.com/ARPITPRAJAPATI/Advance_bank_system.git'
-            }
-        }
-
-        stage('Trivy: Filesystem Scan') {
-            steps {
-                sh "trivy fs --format table -o trivy-fs-report.html ."
-            }
-        }
-
-        stage('SonarQube: Code Analysis') {
-            steps {
-                withSonarQubeEnv('Sonar') {
-                    sh """
-                        $SONAR_HOME/bin/sonar-scanner \
-                            -Dsonar.projectName=KubePay \
-                            -Dsonar.projectKey=KubePay \
-                            -Dsonar.sources=backend,frontend \
-                            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/.git/**
-                    """
-                }
-            }
-        }
-
-        stage('SonarQube: Quality Gate') {
-            steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
-                }
-            }
-        }
-
-        stage('OWASP: Dependency-Check') {
-            steps {
-                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit --format XML --nvdApiKey 85E00693-0DD1-4343-A874-97B42E144F64', odcInstallation: 'OWASP'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
-        }
-
-        stage('Docker: Build & Push Images') {
-            steps {
-                script {
-                    withDockerRegistry([credentialsId: 'docker', url: '']) {
-                        sh "docker build -t ${BACKEND_IMAGE}:${TAG} -t ${BACKEND_IMAGE}:latest ./backend"
-                        sh "docker push ${BACKEND_IMAGE}:${TAG}"
-                        sh "docker push ${BACKEND_IMAGE}:latest"
-
-                        sh "docker build -t ${FRONTEND_IMAGE}:${TAG} -t ${FRONTEND_IMAGE}:latest ./frontend"
-                        sh "docker push ${FRONTEND_IMAGE}:${TAG}"
-                        sh "docker push ${FRONTEND_IMAGE}:latest"
-                    }
-                }
-            }
-        }
-
-        stage('Trivy: Container Image Scan') {
-            steps {
-                sh "trivy image --format table -o trivy-backend-image.html ${BACKEND_IMAGE}:${TAG}"
-                sh "trivy image --format table -o trivy-frontend-image.html ${FRONTEND_IMAGE}:${TAG}"
-            }
-        }
-
-        stage('Trigger: GitOps CD Pipeline') {
-            steps {
-                script {
-                    echo "🚀 Triggering GitOps CD Pipeline with Tag: ${TAG}..."
-                    build job: "KubePay-CD", parameters: [
-                        string(name: 'BACKEND_DOCKER_TAG', value: "${TAG}"),
-                        string(name: 'FRONTEND_DOCKER_TAG', value: "${TAG}")
-                    ], wait: false
-                }
-            }
-        }
-    }
-
-    post {
-        always {
-            archiveArtifacts artifacts: '*.html, **/dependency-check-report.xml', allowEmptyArchive: true
-            echo "🎉 CI Pipeline Finished! Deployed images tagged with ${TAG}"
-        }
-        failure {
-            emailext (
-                attachLog: true,
-                to: "arpitprajapati2005@gmail.com",
-                subject: "🚨 [FAILED] Kube Pay CI Pipeline - Build #${env.BUILD_NUMBER}",
-                mimeType: 'text/html',
-                body: "..."
-            )
-        }
-    }
-}
-```
-
-#### Line-by-Line Architectural Rationale:
-* `TAG = "${params.DOCKER_TAG ?: env.BUILD_NUMBER}"`:
-  * **The Immutable Tagging Standard**: Deploying containers with `:latest` in production is a major operational risk. If a bug is deployed, you cannot identify which commit caused it, and `kubectl rollout undo` fails because the image tag never changed.
-  * This fallback assigns sequential, immutable tags matching the Jenkins build number (`:23`, `:24`), while allowing manual tag overrides for hotfix patches.
-* `cleanWs()`:
-  * Eliminates workspace cache pollution from previous builds, guaranteeing deterministic builds.
-* `git ... changelog: false, poll: false`:
-  * Disables expensive SCM polling and changelog calculations, reducing checkout time to under 1 second.
-* **Trivy Filesystem Scan vs Trivy Image Scan**:
-  * *Trivy FS*: Scans raw source code for hardcoded secrets, AWS keys, database credentials, and unpinned dependencies *before* anything is compiled.
-  * *Trivy Image*: Scans the final built binary container layers and base OS packages (e.g. Alpine Linux system packages, OpenSSL, musl libc) *after* compilation.
-* **The OWASP Dependency-Check Optimization (15m ➔ 3s)**:
-  * By default, OWASP downloads the entire National Vulnerability Database (NVD) data feeds over HTTP on every pipeline execution. Due to NVD rate limits, this previously caused 15-minute pipeline freezes.
-  * Supplying `--nvdApiKey`, disabling unused package managers (`--disableYarnAudit --disableNodeAudit`), and caching the local XML database reduced scan times from **15 minutes** to **under 3 seconds**!
-* `build job: "KubePay-CD", wait: false`:
-  * Asynchronously invokes the downstream GitOps CD pipeline without holding the CI Jenkins agent queue open.
-
----
-
-### 2.2 `gitops/Jenkinsfile-CD` & The GitOps Continuous Delivery Bridge
-
-```groovy
-pipeline {
-    agent { label 'Node' }
-
-    environment {
-        APP_NAME        = 'Kube Pay (Advance Banking System)'
-        REPO_URL        = 'https://github.com/ARPITPRAJAPATI/Advance_bank_system.git'
-        ARGOCD_URL      = 'https://13.203.207.58:31136'
-        NOTIFICATION_TO = 'arpitprajapati2005@gmail.com'
-        TARGET_BACKEND_TAG  = "${params.BACKEND_DOCKER_TAG ?: 'latest'}"
-        TARGET_FRONTEND_TAG = "${params.FRONTEND_DOCKER_TAG ?: 'latest'}"
-    }
-
-    parameters {
-        string(name: 'BACKEND_DOCKER_TAG', defaultValue: 'latest', description: 'Docker tag for Backend')
-        string(name: 'FRONTEND_DOCKER_TAG', defaultValue: 'latest', description: 'Docker tag for Frontend')
-    }
-
-    stages {
-        stage('Validate Parameters') {
-            steps {
-                script {
-                    echo "📋 Target Deploy Versions -> Backend: ${env.TARGET_BACKEND_TAG} | Frontend: ${env.TARGET_FRONTEND_TAG}"
-                }
-            }
-        }
-
-        stage('Workspace Cleanup') {
-            steps { cleanWs() }
-        }
-
-        stage('Git Checkout: Main') {
-            steps {
-                git branch: 'main', changelog: false, poll: false, url: "${env.REPO_URL}"
-            }
-        }
-
-        stage('Update Kubernetes Manifests') {
-            steps {
-                script {
-                    sh """
-                        sed -i "s|image: aruhehe/kubepay-backend:.*|image: aruhehe/kubepay-backend:${env.TARGET_BACKEND_TAG}|g" k8s/backend-deployment.yaml
-                        sed -i "s|image: aruhehe/kubepay-frontend:.*|image: aruhehe/kubepay-frontend:${env.TARGET_FRONTEND_TAG}|g" k8s/frontend-deployment.yaml
-                    """
-                }
-            }
-        }
-
-        stage('Pre-Flight Manifest Validation') {
-            steps {
-                script {
-                    sh """
-                        grep "image: aruhehe/kubepay-backend:${env.TARGET_BACKEND_TAG}" k8s/backend-deployment.yaml
-                        grep "image: aruhehe/kubepay-frontend:${env.TARGET_FRONTEND_TAG}" k8s/frontend-deployment.yaml
-                        echo "✅ Manifests successfully verified!"
-                    """
-                }
-            }
-        }
-
-        stage('Git: Commit & Push to GitOps Repo') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-                        sh """
-                            git config user.name "ARPITPRAJAPATI"
-                            git config user.email "${env.NOTIFICATION_TO}"
-
-                            if git diff --quiet k8s/backend-deployment.yaml k8s/frontend-deployment.yaml; then
-                                echo "⚠️ No changes detected in image tags. Skipping commit."
-                            else
-                                git add k8s/backend-deployment.yaml k8s/frontend-deployment.yaml
-                                git commit -m "chore(gitops): bump deployment versions to backend:${params.BACKEND_DOCKER_TAG} frontend:${params.FRONTEND_DOCKER_TAG} [skip ci]"
-                                git push https://\${GIT_USER}:\${GIT_TOKEN}@github.com/ARPITPRAJAPATI/Advance_bank_system.git HEAD:main
-                            fi
-                        """
-                    }
-                }
-            }
-        }
-    }
-}
-```
-
----
-
-### 2.3 ArgoCD Engine & In-Cluster Auto-Healing Architecture
-
-In KubePay, ArgoCD runs inside the `argocd` namespace on the Kubernetes cluster.
-* **Continuous Git Reconciliation**: ArgoCD queries GitHub every 3 minutes (or receives instant GitHub webhook pings).
-* **Declarative Self-Healing (`selfHeal: true`)**:
-  * If a rogue developer or cluster administrator manually runs `kubectl scale deployment backend --replicas=10` or changes an environment variable directly via `kubectl edit`, ArgoCD detects configuration drift and automatically reverts the cluster to match Git within seconds!
-* **Automated Pruning (`prune: true`)**:
-  * If a resource manifest is removed from Git, ArgoCD cleanly terminates and garbage-collects the corresponding Kubernetes resource.
-
----
-
-### 2.4 `k8s/backend-deployment.yaml` & `backend-service.yaml`
-
-```yaml
-# backend-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: backend
-  namespace: kubepay
-  labels:
-    app: backend
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: backend
-  template:
-    metadata:
-      labels:
-        app: backend
-    spec:
-      containers:
-        - name: backend
-          image: aruhehe/kubepay-backend:23
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 3000
-          envFrom:
-            - secretRef:
-                name: backend-secret
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
----
-# backend-service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: backend
-  namespace: kubepay
-spec:
-  type: ClusterIP # 👈 Completely private, zero public attack surface
-  selector:
-    app: backend
-  ports:
-    - port: 3000
-      targetPort: 3000
-```
-
-#### Architectural Rationale:
-1. **ClusterIP Port 3000**:
-   * Security defense-in-depth: Sensitive database queries, JWT parsing, and financial mutations must **never** be directly routable from the public internet.
-   * `ClusterIP` binds the service to an internal virtual IP accessible only within the cluster software-defined network.
-2. **Resource Requests vs Limits**:
-   * `requests: cpu 100m, memory 128Mi`: Used by the Kubernetes Scheduler to place the pod on an EC2 worker node with available capacity.
-   * `limits: cpu 500m, memory 512Mi`: Enforced by Linux **cgroups**.
-   * If CPU limit is breached: Linux throttles CPU cycles (latency increases, but pod stays alive).
-   * If Memory limit is breached: Linux triggers an **OOMKill (Exit Code 137)**, terminating the container immediately to prevent host node starvation.
-
----
-
-### 2.5 `k8s/frontend-deployment.yaml` & `frontend-service.yaml`
-
-```yaml
-# frontend-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: frontend
-  namespace: kubepay
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: frontend
-  template:
-    metadata:
-      labels:
-        app: frontend
-    spec:
-      containers:
-        - name: frontend
-          image: aruhehe/kubepay-frontend:23
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 80
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              cpu: 200m
-              memory: 256Mi
----
-# frontend-service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: frontend
-  namespace: kubepay
-spec:
-  type: NodePort # 👈 Edge ingress entrypoint
-  selector:
-    app: frontend
-  ports:
-    - port: 80
-      targetPort: 80
-      nodePort: 31100
-```
-
----
-
-### 2.6 `k8s/backend-secret.example` & Kubernetes Secret Hygiene
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: backend-secret
-  namespace: kubepay
-type: Opaque
-stringData:
-  PORT: "3000"
-  MONGO_URI: "mongodb+srv://<username>:<password>@cluster0.mongodb.net/bank-system"
-  JWT_SECRET: "your_jwt_secret_here"
-  CLIENT_ID: "your_google_client_id.apps.googleusercontent.com"
-  CLIENT_SECRET: "your_google_client_secret"
-  REFRESH_TOKEN: "your_google_refresh_token"
-  EMAIL_USER: "your_email@gmail.com"
-```
-
-#### Production Secret Hygiene Rule:
-* **Never commit real credentials to Git!** Only `backend-secret.example` is committed as documentation.
-* The actual `backend-secret` is created out-of-band directly on the Kubernetes cluster using `kubectl create secret generic backend-secret --from-env-file=.env -n kubepay` or synced using AWS Secrets Manager / HashiCorp Vault via External Secrets Operator.
-
----
-
-### 2.7 `terraform/ec2.tf` & Declarative Infrastructure Automation
-
-```hcl
-# 1. Default VPC Adoption
-resource "aws_default_vpc" "default" {
-}
-
-# 2. Dynamic lookup for latest Ubuntu 22.04 LTS AMI
-data "aws_ami" "ubuntu" {
-  most_recent = true
-  owners      = ["099720109477"]
-
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
-# 3. Dynamic RSA Key Pair Generation Fallback
-resource "tls_private_key" "generated" {
-  count     = fileexists(var.public_key_path) ? 0 : 1
-  algorithm = "RSA"
-  rsa_bits  = 4096
-}
-
-# 4. AWS Key Pair
-resource "aws_key_pair" "deployer" {
-  key_name   = var.key_name
-  public_key = fileexists(var.public_key_path) ? file(var.public_key_path) : tls_private_key.generated[0].public_key_openssh
-}
-
-# 5. Security Group
-resource "aws_security_group" "ec2_sg" {
-  name        = "ec2-default-vpc-sg"
-  vpc_id      = aws_default_vpc.default.id
-
-  ingress {
-    description = "Allow SSH"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    description = "Allow HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    description = "Allow HTTPS"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  egress {
-    description = "Allow all outbound traffic"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-# 6. EC2 Provisioning
-resource "aws_instance" "web" {
-  ami                    = var.ami_id != "" ? var.ami_id : data.aws_ami.ubuntu.id
-  instance_type          = var.instance_type
-  key_name               = aws_key_pair.deployer.key_name
-  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
-
-  tags = {
-    Name = "EC2-Instance"
-  }
-}
-```
-
----
-
-### 2.8 Prometheus & Grafana Observability Helm Stack
-
-* Installed via `kube-prometheus-stack` into the `monitoring` namespace.
-* **Prometheus Server (NodePort: 30090)**:
-  * Pull-based metrics collector scraping targets every 15 seconds.
-  * Targets:
-    1. `cAdvisor`: Container CPU, memory usage, network bytes transmitted.
-    2. `kube-state-metrics`: Deployment readiness, CrashLoopBackOff count, pod eviction events.
-    3. `node-exporter`: Physical Linux EC2 node I/O, disk pressure, kernel thread count.
-* **Grafana Dashboards (NodePort: 32000)**:
-  * Visualizes cluster health, saturation, and latency (Golden Signals).
-
----
-
-## 3. The Infinite CI/CD Loop Nightmare & The Triple-Shield Defense
-
-### The Disaster Scenario:
-1. Developer pushes code to GitHub.
-2. GitHub Webhook triggers Jenkins CI.
-3. Jenkins CI completes build and triggers Jenkins CD.
-4. Jenkins CD modifies `backend-deployment.yaml` and commits back to GitHub.
-5. GitHub Webhook sees a new commit and triggers Jenkins CI again... creating an **infinite recursive billing loop**!
-
-### KubePay's Triple-Shield Defense:
 ```mermaid
 flowchart LR
-    CD_Commit["1. Commit Message:<br/>chore(gitops): ... [skip ci]"] --> Jenkins_Filter["2. Jenkins SCM Exclusion Regex:<br/>(?s).*\[skip ci\].*"]
-    Jenkins_Filter --> Path_Filter["3. SCM Path Exclusion:<br/>k8s/** ignored by CI"]
-    Path_Filter --> Diff_Guard["4. git diff --quiet:<br/>No tag changes = No commit!"]
-```
+    subgraph PreBuild ["Pre-Build Security Gates (Source Code)"]
+        TrivyFS["Trivy FS Scan:<br/>Finds leaked secrets, API keys, and unpinned deps"]
+        SonarQube["SonarQube Quality Gate:<br/>Detects bugs, code smells, and security hotspots"]
+        OWASP["OWASP Dep-Check:<br/>Audits package.json against NVD database"]
+    end
 
-1. **Commit Message Flag**: The CD pipeline tags commits with `[skip ci]`.
-2. **Jenkins SCM Message Exclusion**: Jenkins Git plugin configured with regex `(?s).*\[skip ci\].*`.
-3. **Jenkins SCM Path Exclusion**: Jenkins CI ignores changes made strictly inside `k8s/**`.
-4. **`git diff --quiet`**: If the image tag didn't change, the CD pipeline skips the commit entirely.
+    subgraph BuildStep ["Image Packaging"]
+        Docker["Docker Multi-Stage Build"]
+    end
+
+    subgraph PostBuild ["Post-Build Security Gate (Binary Artifact)"]
+        TrivyImg["Trivy Image Scan:<br/>Scans compiled container layers and Alpine OS libraries"]
+    end
+
+    PreBuild --> BuildStep --> PostBuild
+```
 
 ---
 
-## 4. Push-Based vs Pull-Based Deployments: The Security Rationale
+### 2.2 OWASP Dependency-Check Optimization (15 min ➔ 3 sec)
 
-| Attribute | Traditional Push CD (e.g. Jenkins `kubectl apply`) | KubePay Pull GitOps (ArgoCD) |
-| :--- | :--- | :--- |
-| **Cluster Access** | CI server must store full `cluster-admin` kubeconfig. | **Zero credentials outside cluster.** ArgoCD runs inside K8s. |
-| **Blast Radius** | If Jenkins is compromised, the attacker owns the production cluster. | Compromised Jenkins only has Git write access to manifest files. |
-| **Drift Detection** | None. Manual `kubectl` changes remain undetected. | **Continuous**. Automatically detects and corrects drift (`selfHeal`). |
-| **Firewall Ingress** | Kubernetes API server must allow incoming connections from CI IP. | Kubernetes API remains completely private; ArgoCD pulls outbound via HTTPS. |
+```mermaid
+flowchart TD
+    subgraph Naive_Flow ["❌ Default Unoptimized OWASP Scan"]
+        Start1["Run dependencyCheck"] --> DownloadHTTP["Download entire NVD feed over HTTP"]
+        DownloadHTTP --> RateLimit["Hit NVD API rate limits & throttling"]
+        RateLimit --> Freeze["Build blocked for 10 - 15 minutes!"]
+    end
+
+    subgraph Optimized_Flow ["✅ KubePay Production Optimization"]
+        Start2["Run dependencyCheck with --nvdApiKey"]
+        DisableAudits["--disableYarnAudit --disableNodeAudit"]
+        LocalCache["Mount persistent local XML cache on Jenkins Node"]
+        DeltaSync["Incremental delta download (sub-second!)"]
+        FastFinish["Scan completed in 2.8 seconds!"]
+        
+        Start2 --> DisableAudits --> LocalCache --> DeltaSync --> FastFinish
+    end
+```
+
+#### 🎯 Key Code Snippet (`Jenkinsfile`):
+```groovy
+stage('OWASP: Dependency-Check') {
+    steps {
+        // --nvdApiKey and disabling unused package auditors dropped build time from 15m to 3s
+        dependencyCheck additionalArguments: 
+            '--scan ./ --disableYarnAudit --disableNodeAudit --format XML --nvdApiKey 85E00693-0DD1-4343-A874-97B42E144F64', 
+            odcInstallation: 'OWASP'
+        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+    }
+}
+```
 
 ---
 
-## 5. Production SRE Troubleshooting & Playbooks
+### 2.3 Semantic Version Tagging vs. The `:latest` Anti-Pattern
 
-### Playbook 1: Pod in `CrashLoopBackOff`
-```bash
-# 1. Inspect recent exit code and termination reason
-kubectl describe pod <pod-name> -n kubepay
+```mermaid
+flowchart TD
+    subgraph AntiPattern ["❌ Using :latest in Production Kubernetes"]
+        LatestTag["image: aruhehe/kubepay-backend:latest"]
+        RolloutUndo["Bug found! Run: kubectl rollout undo"]
+        Failure["Rollback fails! Pod image tag was already 'latest'!"]
+        Traceability["Impossible to know which Git commit produced running pod!"]
+        LatestTag --> RolloutUndo --> Failure --> Traceability
+    end
 
-# 2. Check live container logs
-kubectl logs <pod-name> -n kubepay --previous
+    subgraph KubePayPattern ["✅ Sequential Immutable Version Tags"]
+        BuildNum["TAG = params.DOCKER_TAG ?: env.BUILD_NUMBER"]
+        ImmutableTag["image: aruhehe/kubepay-backend:23"]
+        InstantRollback["kubectl rollout undo reverts to image:22 instantly!"]
+        AuditTrail["Git commit ➔ Jenkins Build #23 ➔ Pod Image #23 (100% Traceable)"]
+        BuildNum --> ImmutableTag --> InstantRollback --> AuditTrail
+    end
 ```
-* **Common Root Cause**: `process.exit(1)` triggered because `MONGO_URI` in `backend-secret` is invalid or MongoDB Atlas network access list blocked the EC2 public IP.
-
-### Playbook 2: Pod Terminated with `OOMKilled` (Exit Code 137)
-```bash
-# Check container memory limit events
-kubectl get events -n kubepay --sort-by='.metadata.creationTimestamp'
-```
-* **Resolution**: Increase `resources.limits.memory` in `backend-deployment.yaml` from `512Mi` to `1Gi` and push to Git. ArgoCD auto-deploys the update.
 
 ---
 
-## 6. Senior DevOps, SRE & Cloud Architect Interview Q&A
+## 3. GitOps Continuous Delivery (`Jenkinsfile-CD` & ArgoCD)
 
-### Q1: "Explain the architectural difference between Push-based CD and Pull-based GitOps."
-> **Answer:** *"In traditional Push-based CD, an external runner like Jenkins stores cluster-admin credentials and runs `kubectl apply` against the Kubernetes API. This violates the principle of least privilege, exposes cluster credentials on the CI tool, and cannot detect manual configuration drift. In Pull-based GitOps with ArgoCD, no external system has cluster access. ArgoCD runs natively inside Kubernetes, continuously watches Git as the single source of truth, and pulls updates into the cluster. Furthermore, with `selfHeal: true`, ArgoCD continuously reconciles cluster drift: if a developer manually alters a replica count via kubectl, ArgoCD immediately reverts it back to match Git."*
+### 3.1 Push-Based CD vs. Pull-Based GitOps
 
-### Q2: "How did you solve the infinite build loop problem in your CI/CD setup?"
-> **Answer:** *"When our CD pipeline updates image tags in the Kubernetes deployment YAMLs and pushes them back to Git, a naive webhook would trigger the CI pipeline again in an infinite loop. We implemented a multi-layered guard: First, the CD pipeline commits with a message containing `[skip ci]`. Second, in Jenkins CI SCM settings, we added an SCM Message Exclusion regex `(?s).*\[skip ci\].*` and a Path Exclusion on `k8s/**`. Third, before committing, the CD pipeline runs `git diff --quiet`; if the image tag is unchanged, it skips the commit entirely."*
+```mermaid
+flowchart TD
+    subgraph TraditionalPush ["❌ Traditional Push CD (Jenkins kubectl apply)"]
+        JenkinsPush["Jenkins CI Server"]
+        KubeConfig["Contains full cluster-admin credentials!"]
+        K8sAPI["Kubernetes API Server (Must allow ingress from CI IP)"]
+        Compromise["Security Risk: If Jenkins is hacked, cluster is owned!"]
+        Drift["Zero drift detection if manual edits occur!"]
+        
+        JenkinsPush --> KubeConfig --> K8sAPI --> Compromise --> Drift
+    end
 
-### Q3: "What happens when a container reaches its CPU limit versus its Memory limit in Kubernetes?"
-> **Answer:** *"They behave fundamentally differently due to Linux kernel cgroup enforcement. CPU is a compressible resource: when a container hits its CPU limit, the CFS (Completely Fair Scheduler) throttles the container's CPU cycles. The application experiences increased response latency, but the process is not killed. Memory is an incompressible resource: when a container exceeds its memory limit, the Linux kernel invokes the Out-Of-Memory (OOM) Killer. The container is immediately terminated with exit code 137, and Kubernetes restarts the pod according to its restartPolicy."*
+    subgraph PullGitOps ["✅ KubePay Pull-Based GitOps (ArgoCD)"]
+        JenkinsCD["Jenkins CD (Updates YAML tags only)"]
+        GitRepo["GitHub Repo (Single Source of Truth)"]
+        ArgoCD["ArgoCD Controller (Runs INSIDE Kubernetes)"]
+        ZeroCreds["Zero cluster credentials stored on Jenkins!"]
+        SelfHeal["Continuously reconciles & auto-heals cluster drift!"]
+        
+        JenkinsCD -->|git push| GitRepo
+        ArgoCD -->|Pulls updates via outbound HTTPS| GitRepo
+        ArgoCD -->|Reconciles state natively| ZeroCreds & SelfHeal
+    end
+```
 
-### Q4: "How did you optimize OWASP Dependency-Check from 15 minutes to 3 seconds in Jenkins?"
-> **Answer:** *"By default, OWASP Dependency-Check downloads the complete National Vulnerability Database (NVD) CVE feeds on every single run. Due to recent NVD API rate limits, unauthenticated downloads suffered severe network throttling. We registered an official NVD API key (`--nvdApiKey`), disabled unused language scanners (`--disableYarnAudit --disableNodeAudit`), and configured Jenkins to maintain a persistent local XML cache on the agent node. Subsequent pipeline executions only perform fast incremental delta checks, reducing the scan duration from 15 minutes to under 3 seconds."*
+---
 
+### 3.2 The Infinite CI/CD Webhook Loop & Triple-Shield Defense
+
+When CD pushes manifest updates to Git, naive webhooks trigger CI again in an infinite loop!
+
+```mermaid
+flowchart LR
+    CD_Push["CD commits updated k8s/*.yaml"] --> Shield1["Shield 1: Commit Flag<br/>chore(gitops): ... [skip ci]"]
+    Shield1 --> Shield2["Shield 2: Jenkins SCM Regex<br/>(?s).*\[skip ci\].* ignores build"]
+    Shield2 --> Shield3["Shield 3: Path Exclusion<br/>Changes to k8s/** ignored by CI"]
+    Shield3 --> Shield4["Shield 4: git diff --quiet<br/>No tag changes = Skip commit entirely!"]
+    Shield4 --> LoopKilled["✅ Infinite Loop Prevented!"]
+```
+
+#### 🎯 Key Code Snippet (`gitops/Jenkinsfile-CD`):
+```groovy
+sh """
+    # Pre-commit validation: Check if tags actually changed
+    if git diff --quiet k8s/backend-deployment.yaml k8s/frontend-deployment.yaml; then
+        echo "No changes detected. Skipping commit."
+    else
+        git add k8s/backend-deployment.yaml k8s/frontend-deployment.yaml
+        git commit -m "chore(gitops): bump deployment versions to backend:${params.BACKEND_DOCKER_TAG} [skip ci]"
+        git push origin HEAD:main
+    fi
+"""
+```
+
+---
+
+## 4. Kubernetes Cluster Architecture & Networking Mesh
+
+### 4.1 Ingress Routing, Service Types & CoreDNS Resolution
+
+```mermaid
+flowchart TD
+    User["🌐 External User Traffic"] --> NodePort["Frontend Service (NodePort: 31100)"]
+    NodePort --> FEPods["Frontend Pods (Nginx Edge)"]
+
+    subgraph InternalMesh ["Kubernetes Private Cluster Network (SDN)"]
+        CoreDNS["CoreDNS Discovery: 'backend' ➔ 10.96.24.110"]
+        BEClusterIP["Backend Service (ClusterIP: 3000)"]
+        BEPods["Backend Pods (Node.js/Express)"]
+    end
+
+    FEPods -->|Nginx: proxy_pass http://backend:3000/api/| CoreDNS
+    CoreDNS --> BEClusterIP
+    BEClusterIP --> BEPods
+```
+
+#### 🎯 Service Comparison Table:
+| Service | Type | Port | TargetPort | Security Rationale |
+| :--- | :--- | :--- | :--- | :--- |
+| **`frontend`** | `NodePort` | 80 | 80 (NodePort 31100) | Public ingress entrypoint accepting user HTTP browser traffic. |
+| **`backend`** | `ClusterIP`| 3000 | 3000 | Private internal IP. Completely inaccessible from public internet. |
+
+---
+
+### 4.2 Linux cgroups: CPU Throttling vs. Memory OOMKill
+
+```mermaid
+flowchart TD
+    Pod["Running Container Pod"]
+    
+    subgraph ResourceEvaluation ["Linux cgroups Enforcement"]
+        CPUCheck["Container hits CPU Limit (500m)"]
+        MemCheck["Container hits Memory Limit (512Mi)"]
+    end
+
+    Pod --> CPUCheck & MemCheck
+
+    subgraph EnforcementConsequences ["Kernel Level Action"]
+        CFSThrottling["Linux CFS throttles CPU cycles<br/>➔ Pod latency increases, but process stays ALIVE!"]
+        OOMKiller["Linux OOM-Killer terminates process<br/>➔ Container dies with Exit Code 137!"]
+        RestartPolicy["Kubelet invokes restartPolicy: CrashLoopBackOff!"]
+    end
+
+    CPUCheck --> CFSThrottling
+    MemCheck --> OOMKiller --> RestartPolicy
+```
+
+#### 🎯 Key Code Snippet (`k8s/backend-deployment.yaml`):
+```yaml
+resources:
+  requests:
+    cpu: 100m      # 👈 Used by K8s Scheduler for initial node placement
+    memory: 128Mi
+  limits:
+    cpu: 500m      # 👈 Throttled by Linux CFS if exceeded
+    memory: 512Mi  # 👈 Triggers OOMKill (Exit 137) if exceeded
+```
+
+---
+
+## 5. Infrastructure as Code (Terraform) & Cloud Observability
+
+### 5.1 Terraform AWS EC2 Provisioning Dependency Graph
+
+```mermaid
+flowchart TD
+    VPC["aws_default_vpc.default"]
+    AMI["data.aws_ami.ubuntu (Dynamic AMI Query: Canonical Ubuntu 22.04)"]
+    Key["tls_private_key.generated (Fallback 4096-bit RSA Generation)"]
+    KeyPair["aws_key_pair.deployer"]
+    SG["aws_security_group.ec2_sg (Ingress: 22, 80, 443 | Egress: All)"]
+    EC2["aws_instance.web"]
+
+    VPC --> SG
+    AMI & Key & KeyPair & SG --> EC2
+```
+
+---
+
+### 5.2 Prometheus Pull-Model Scraping & Grafana Dashboards
+
+```mermaid
+flowchart TD
+    subgraph Targets ["Scrape Targets (Every 15s via HTTP)"]
+        cAdvisor["cAdvisor: Pod CPU, Memory, Network I/O"]
+        KSM["kube-state-metrics: Deployment status, CrashLoopBackOffs"]
+        NodeExp["node-exporter: Physical Node disk space, CPU load"]
+    end
+
+    subgraph PrometheusServer ["Prometheus Server (NodePort: 30090)"]
+        PullEngine["Prometheus Pull Engine (Kubernetes Service Discovery)"]
+        TSDB["Time-Series Database (TSDB)"]
+        Alerts["Alertmanager Rules (e.g. Memory > 85%, CrashLoop alerts)"]
+        PullEngine --> TSDB --> Alerts
+    end
+
+    Targets --> PullEngine
+
+    subgraph Visualization ["Observability UI"]
+        Grafana["Grafana Dashboards (NodePort: 32000)"]
+    end
+
+    TSDB --> Grafana
+```
+
+---
+
+## 6. Production SRE Failure Scenarios & Troubleshooting Playbooks
+
+### 🚨 Playbook 1: Pod in `CrashLoopBackOff`
+```mermaid
+flowchart TD
+    Alert["Pod enters CrashLoopBackOff"] --> Step1["1. kubectl describe pod <pod-name> -n kubepay"]
+    Step1 --> CheckExit["Check Last State Exit Code"]
+    CheckExit -- Exit Code 1 --> DBError["Node.js process.exit(1) triggered:<br/>Check MongoDB connection string or IP whitelist!"]
+    CheckExit -- Exit Code 137 --> OOMError["OOMKilled:<br/>Container exceeded memory limit! Increase memory limit in YAML."]
+    Step1 --> Step2["2. kubectl logs <pod-name> -n kubepay --previous"]
+```
+
+---
+
+## 7. Senior DevOps, SRE & Cloud Architect Interview Flashcards
+
+### 🎴 Card 1: Shift-Left DevSecOps
+* **Q:** *What is the difference between Trivy FS and Trivy Image in your CI pipeline?*
+* **A:** Trivy FS runs *before* building the image, scanning raw source files for hardcoded secrets, database credentials, and unpinned dependencies. Trivy Image runs *after* compilation, inspecting the final container binary layers and base OS packages (e.g. Alpine Linux packages, OpenSSL, musl libc) for newly published CVEs.
+
+### 🎴 Card 2: GitOps Pull vs Push Architecture
+* **Q:** *Why is Pull-based GitOps with ArgoCD more secure than traditional Push-based CD with Jenkins?*
+* **A:** In Push-based CD, Jenkins must hold full `cluster-admin` credentials, making it a high-value attack target. In Pull-based GitOps, no external system has cluster access. ArgoCD runs natively inside Kubernetes, pulling updates via outbound HTTPS. Furthermore, ArgoCD provides continuous drift detection and auto-healing (`selfHeal: true`).
+
+### 🎴 Card 3: The Infinite Webhook Loop
+* **Q:** *How did you solve the infinite build loop when your CD pipeline pushes updated manifests back to Git?*
+* **A:** We implemented a triple-shield defense: 1) The CD pipeline tags commits with `[skip ci]`. 2) Jenkins SCM configuration enforces an exclusion regex `(?s).*\[skip ci\].*`. 3) Jenkins ignores commits affecting `k8s/**`. 4) A pre-commit `git diff --quiet` skips committing if the image tag is unchanged.
+
+### 🎴 Card 4: CPU Throttling vs. Memory OOMKill
+* **Q:** *What happens when a container reaches its CPU limit versus its Memory limit in Kubernetes?*
+* **A:** CPU is a compressible resource: when a container hits its CPU limit, Linux CFS throttles its CPU time. The pod experiences latency, but stays alive. Memory is incompressible: when a container exceeds its memory limit, the Linux kernel invokes the OOM Killer, terminating the pod with exit code 137.
