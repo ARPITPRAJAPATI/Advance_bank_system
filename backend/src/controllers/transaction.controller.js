@@ -5,116 +5,178 @@ const emailService = require("../services/email.service")
 const mongoose = require("mongoose")
 
 async function createTransaction(req, res) {
-    const {fromAccount, toAccount, amount, idempotencyKey} = req.body
-                     
-    if(!fromAccount || !toAccount || !amount || !idempotencyKey){
+    const { fromAccount, toAccount, amount, idempotencyKey } = req.body;
+
+    // 1. Basic Presence Validation
+    if (!fromAccount || !toAccount || amount === undefined || !idempotencyKey) {
         return res.status(400).json({
-            message: "toAccount, amount and idempotencyKey are required"
-        })
+            message: "fromAccount, toAccount, amount and idempotencyKey are required"
+        });
     }
 
-    const fromUserAccount = await accountModel.findOne({ _id: fromAccount })
-    const toUserAccount = await accountModel.findOne({ _id: toAccount })
-    
-    if(!fromUserAccount || !toUserAccount){
+    // 2. Strict Positive Number Validation (Negative/Zero Amount Defense)
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
         return res.status(400).json({
-            message: "invalid fromAccount or toAccount"
-        })
+            message: "Amount must be a valid positive number greater than 0"
+        });
     }
 
-    const isTransactonAlreadyExists = await transactionModel.findOne({
-        idempotencyKey: idempotencyKey
-    })
+    // 3. Self-Transfer Block (Sender cannot be Receiver)
+    if (fromAccount.toString() === toAccount.toString()) {
+        return res.status(400).json({
+            message: "Sender and receiver accounts cannot be the same"
+        });
+    }
 
-    if(isTransactonAlreadyExists){
-        if(isTransactonAlreadyExists.status === "COMPLETED"){
+    // 4. Critical Ownership Check: fromAccount MUST belong to the authenticated user!
+    const fromUserAccount = await accountModel.findOne({
+        _id: fromAccount,
+        user: req.user._id
+    });
+
+    if (!fromUserAccount) {
+        return res.status(404).json({
+            message: "Sender account not found or does not belong to you"
+        });
+    }
+
+    // 5. Receiver Account Check
+    const toUserAccount = await accountModel.findOne({ _id: toAccount });
+    if (!toUserAccount) {
+        return res.status(404).json({
+            message: "Receiver account not found"
+        });
+    }
+
+    // 6. Idempotency Check (Existing Transaction Short-Circuit)
+    const isTransactonAlreadyExists = await transactionModel.findOne({ idempotencyKey });
+    if (isTransactonAlreadyExists) {
+        if (isTransactonAlreadyExists.status === "COMPLETED") {
             return res.status(200).json({
                 message: "Transaction already processed",
                 transaction: isTransactonAlreadyExists
-            })
+            });
         }
-        if(isTransactonAlreadyExists.status === "PENDING"){
+        if (isTransactonAlreadyExists.status === "PENDING") {
             return res.status(200).json({
-                message: "Transaction is still processing",
-            })
+                message: "Transaction is still processing"
+            });
         }
-        if(isTransactonAlreadyExists.status === "FAILED"){
-           return res.status(200).json({
-                message: "Transaction processing failed, please retry",
-            })
-        }
-        if(isTransactonAlreadyExists.status === "REVERSED"){
-           return res.status(200).json({
-                message: "Transaction processing reversed",
-            })
+        if (isTransactonAlreadyExists.status === "FAILED") {
+            return res.status(200).json({
+                message: "Transaction processing failed, please retry"
+            });
         }
     }
 
-    
-    if(fromUserAccount.status !=="ACTIVE" || toUserAccount.status!=="ACTIVE"){
+    // 7. Active Status Check
+    if (fromUserAccount.status !== "ACTIVE" || toUserAccount.status !== "ACTIVE") {
         return res.status(400).json({
-           message: "Both fromAccount and toAccount must be ACTIVE to process transaction"
-        })
+            message: "Both fromAccount and toAccount must be ACTIVE to process transaction"
+        });
     }
 
-    const balance = await fromUserAccount.getBalance()
+    // 8. Daily Transfer Limit Enforcement (e.g. Max ₹50,000 / day)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
 
-    if(balance < amount){
+    const todaysDebits = await transactionModel.aggregate([
+        {
+            $match: {
+                fromAccount: fromUserAccount._id,
+                status: "COMPLETED",
+                createdAt: { $gte: startOfToday }
+            }
+        },
+        {
+            $group: {
+                _id: null,
+                totalToday: { $sum: "$amount" }
+            }
+        }
+    ]);
+    const spentToday = todaysDebits[0]?.totalToday || 0;
+    const DAILY_LIMIT = 50000;
+
+    if (spentToday + numericAmount > DAILY_LIMIT) {
         return res.status(400).json({
-            message: `Insufficient balance. Current balance is ${balance}. Required amount is ${amount}`
-        })
+            message: `Daily transfer limit exceeded. Max daily limit: ₹${DAILY_LIMIT}. Already spent today: ₹${spentToday}. Attempted: ₹${numericAmount}`
+        });
     }
 
-    const session = await mongoose.startSession()
-    session.startTransaction()
+    // 9. Dynamic Balance Check
+    const balance = await fromUserAccount.getBalance();
+    if (balance < numericAmount) {
+        return res.status(400).json({
+            message: `Insufficient balance. Current balance is ${balance}. Required amount is ${numericAmount}`
+        });
+    }
 
-    let transaction; 
+    // 10. Multi-Document ACID Session
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    let transaction;
 
     try {
         const [txn] = await transactionModel.create([{
             fromAccount,
             toAccount,
-            amount,
+            amount: numericAmount,
             idempotencyKey,
             status: "PENDING"
-        }], {session})
+        }], { session });
 
-        transaction = txn 
+        transaction = txn;
 
+        // Double-entry: Credit Recipient
         await ledgerModel.create([{
             account: toAccount,
-            amount: amount,
+            amount: numericAmount,
             transaction: transaction._id,
             type: "CREDIT"
-        }], {session})
+        }], { session });
 
+        // Double-entry: Debit Sender
         await ledgerModel.create([{
             account: fromAccount,
-            amount: amount,
+            amount: numericAmount,
             transaction: transaction._id,
             type: "DEBIT"
-        }], {session})
+        }], { session });
 
-        transaction.status = "COMPLETED"
-        await transaction.save({session})
+        transaction.status = "COMPLETED";
+        await transaction.save({ session });
 
-        await session.commitTransaction()
-        session.endSession()
+        await session.commitTransaction();
+        session.endSession();
 
-    } catch(err) {
-        await session.abortTransaction()
-        session.endSession()
+    } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+
+        // 👈 Concurrency Shield: Handle MongoDB E11000 Duplicate Key race condition!
+        if (err.code === 11000) {
+            const existingTxn = await transactionModel.findOne({ idempotencyKey });
+            return res.status(200).json({
+                message: "Transaction already processed (concurrent request handled)",
+                transaction: existingTxn
+            });
+        }
+
         return res.status(500).json({
             message: "Transaction failed to process",
             error: err.message
         });
     }
-    
+
+    // 11. Decoupled Non-blocking Notification
     try {
         await emailService.sendTransactionEmail(
             req.user.email,
             req.user.name,
-            amount,
+            numericAmount,
             toAccount
         );
     } catch (emailErr) {
@@ -124,20 +186,29 @@ async function createTransaction(req, res) {
     return res.status(201).json({
         message: "Transaction completed successfully",
         transaction
-    })
-} 
+    });
+}
 
 
 
+async function createInitialFundsTransaction(req, res) {
+    const { toAccount, amount, idempotencyKey } = req.body;
 
-async function createInitialFundsTransaction(req,res) {
-    const {toAccount, amount, idempotencyKey} = req.body
-
-    if(!toAccount || !amount || !idempotencyKey){
+    // Basic Presence Validation
+    if (!toAccount || amount === undefined || !idempotencyKey) {
         return res.status(400).json({
             message: "toAccount, amount and idempotencyKey are required"
-        })
+        });
     }
+
+    // Strict Positive Number Check
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+        return res.status(400).json({
+            message: "Amount must be a valid positive number greater than 0"
+        });
+    }
+
     const existing = await transactionModel.findOne({ idempotencyKey });
     if (existing) {
         return res.status(200).json({
@@ -145,49 +216,44 @@ async function createInitialFundsTransaction(req,res) {
             transaction: existing
         });
     }
-    const toUserAccount = await  accountModel.findOne({
-        _id: toAccount, 
-    })
-    if(!toUserAccount){
-        return res.status(404).json({
-            message: "toAccount not found"
-        })
-    }
-    const fromUserAccount = await accountModel.findOne({
-        
-        user: req.user._id
-    }) 
 
-    if(!fromUserAccount){
-        return res.status(400).json({
-            message: "system user does not found"
-        })
+    const toUserAccount = await accountModel.findOne({ _id: toAccount });
+    if (!toUserAccount) {
+        return res.status(404).json({ message: "toAccount not found" });
     }
+
+    if (toUserAccount.status !== "ACTIVE") {
+        return res.status(400).json({ message: "Target account is not ACTIVE" });
+    }
+
+    const fromUserAccount = await accountModel.findOne({ user: req.user._id });
+    if (!fromUserAccount) {
+        return res.status(400).json({ message: "System liquidity account not found" });
+    }
+
     const session = await mongoose.startSession();
 
     try {
         session.startTransaction();
 
-        const transaction = await transactionModel.create([{
+        const [txn] = await transactionModel.create([{
             fromAccount: fromUserAccount._id,
             toAccount,
-            amount,
+            amount: numericAmount,
             idempotencyKey,
             status: "PENDING"
         }], { session });
 
-        const txn = transaction[0];
-
         await ledgerModel.create([{
             account: fromUserAccount._id,
-            amount,
+            amount: numericAmount,
             transaction: txn._id,
             type: "DEBIT"
         }], { session });
 
         await ledgerModel.create([{
             account: toAccount,
-            amount,
+            amount: numericAmount,
             transaction: txn._id,
             type: "CREDIT"
         }], { session });
@@ -207,42 +273,155 @@ async function createInitialFundsTransaction(req,res) {
         await session.abortTransaction();
         session.endSession();
 
+        if (err.code === 11000) {
+            const existingTxn = await transactionModel.findOne({ idempotencyKey });
+            return res.status(200).json({
+                message: "Transaction already processed",
+                transaction: existingTxn
+            });
+        }
+
         return res.status(500).json({
             message: "Transaction failed",
             error: err.message
         });
     }
+}
 
-} 
+async function createWithdrawalTransaction(req, res) {
+    const { fromAccount, amount, idempotencyKey } = req.body;
 
-async function getUserTransactions(req, res) {
-    try {
-        const accounts = await accountModel.find({ user: req.user._id });
-        const accountIds = accounts.map(acc => acc._id);
-
-        const transactions = await transactionModel.find({
-            $or: [
-                { fromAccount: { $in: accountIds } },
-                { toAccount: { $in: accountIds } }
-            ]
-        })
-        .sort({ createdAt: -1 })
-        .populate('fromAccount')
-        .populate('toAccount');
-
-        return res.status(200).json({
-            transactions
+    // 1. Presence & Positive Amount Validation
+    if (!fromAccount || amount === undefined || !idempotencyKey) {
+        return res.status(400).json({
+            message: "fromAccount, amount and idempotencyKey are required"
         });
-    } catch (err) {
+    }
+
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+        return res.status(400).json({
+            message: "Amount must be a valid positive number greater than 0"
+        });
+    }
+
+    // 2. Ownership Check: Account MUST belong to the user
+    const userAccount = await accountModel.findOne({
+        _id: fromAccount,
+        user: req.user._id
+    });
+
+    if (!userAccount) {
+        return res.status(404).json({
+            message: "Account not found or does not belong to you"
+        });
+    }
+
+    if (userAccount.status !== "ACTIVE") {
+        return res.status(400).json({
+            message: "Account must be ACTIVE to withdraw funds"
+        });
+    }
+
+    // 3. Idempotency Check
+    const existing = await transactionModel.findOne({ idempotencyKey });
+    if (existing) {
+        return res.status(200).json({
+            message: "Withdrawal already processed",
+            transaction: existing
+        });
+    }
+
+    // 4. Find System Liquidity Account (Receiver of the cash-out debit)
+    const systemAccount = await accountModel.findOne().populate({
+        path: 'user',
+        match: { systemUser: true }
+    });
+
+    if (!systemAccount) {
         return res.status(500).json({
-            message: "Failed to fetch transactions",
+            message: "System cash settlement account not found"
+        });
+    }
+
+    // 5. Balance Check
+    const balance = await userAccount.getBalance();
+    if (balance < numericAmount) {
+        return res.status(400).json({
+            message: `Insufficient balance for withdrawal. Current balance: ${balance}, Requested: ${numericAmount}`
+        });
+    }
+
+    // 6. Atomic Double-Entry Session
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    let transaction;
+    try {
+        const [txn] = await transactionModel.create([{
+            fromAccount: userAccount._id,
+            toAccount: systemAccount._id,
+            amount: numericAmount,
+            idempotencyKey,
+            status: "PENDING"
+        }], { session });
+
+        transaction = txn;
+
+        // Debit User Account
+        await ledgerModel.create([{
+            account: userAccount._id,
+            amount: numericAmount,
+            transaction: transaction._id,
+            type: "DEBIT"
+        }], { session });
+
+        // Credit System Cash Settlement Account
+        await ledgerModel.create([{
+            account: systemAccount._id,
+            amount: numericAmount,
+            transaction: transaction._id,
+            type: "CREDIT"
+        }], { session });
+
+        transaction.status = "COMPLETED";
+        await transaction.save({ session });
+
+        await session.commitTransaction();
+        session.endSession();
+
+    } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+
+        if (err.code === 11000) {
+            const existingTxn = await transactionModel.findOne({ idempotencyKey });
+            return res.status(200).json({
+                message: "Withdrawal already processed",
+                transaction: existingTxn
+            });
+        }
+
+        return res.status(500).json({
+            message: "Withdrawal failed to process",
             error: err.message
         });
     }
-}
 
-module.exports = {
-    createTransaction,
-    createInitialFundsTransaction,
-    getUserTransactions
+    // 7. Non-blocking Email Alert
+    try {
+        await emailService.sendTransactionEmail(
+            req.user.email,
+            req.user.name,
+            numericAmount,
+            "CASH_WITHDRAWAL"
+        );
+    } catch (emailErr) {
+        console.error("Email notification error (non-blocking):", emailErr.message);
+    }
+
+    return res.status(201).json({
+        message: "Withdrawal completed successfully",
+        transaction
+    });
 }

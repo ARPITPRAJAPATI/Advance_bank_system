@@ -1,6 +1,6 @@
 const accountModel = require("../models/account.model")
 
-async function createAccountController(req,res){
+async function createAccountController(req, res) {
     const user = req.user
     const account = await accountModel.create({
         user: user._id,
@@ -20,14 +20,14 @@ async function getUserAccountsController(req, res) {
     })
 }
 async function getAccountBalanceController(req, res) {
-    const {accountId} = req.params;
-    const account =await accountModel.findOne({
-        _id:accountId,
+    const { accountId } = req.params;
+    const account = await accountModel.findOne({
+        _id: accountId,
         user: req.user._id
     })
-    if(!account){
+    if (!account) {
         return res.status(404).json({
-            message:"Account not found"
+            message: "Account not found"
         })
     }
     const balance = await account.getBalance();
@@ -36,7 +36,55 @@ async function getAccountBalanceController(req, res) {
         balance: balance
     })
 }
-module.exports = {createAccountController,
+async function updateAccountStatusController(req, res) {
+    const { accountId } = req.params;
+    const { status } = req.body;
+
+
+    const allowedStatuses = ["ACTIVE", "FROZEN", "CLOSED"];
+    if (!status || !allowedStatuses.includes(status.toUpperCase())) {
+        return res.status(400).json({
+            message: `Invalid status. Status must be one of: ${allowedStatuses.join(", ")}`
+        });
+    }
+
+    // 2. Ownership Check: Account must belong to the logged-in user (or System Admin)
+    const query = { _id: accountId };
+    if (!req.user.systemUser) {
+        query.user = req.user._id; // Regular users can only freeze/unfreeze their own accounts
+    }
+
+    const account = await accountModel.findOne(query);
+
+    if (!account) {
+        return res.status(404).json({
+            message: "Account not found or you do not have permission to modify it"
+        });
+    }
+
+    // 3. Prevent reopening CLOSED accounts (Banking rule: Closed accounts cannot be revived)
+    if (account.status === "CLOSED") {
+        return res.status(400).json({
+            message: "Closed accounts cannot be modified or reactivated"
+        });
+    }
+
+    // 4. Update and Save
+    account.status = status.toUpperCase();
+    await account.save();
+
+    return res.status(200).json({
+        message: `Account status successfully updated to ${account.status}`,
+        account: {
+            _id: account._id,
+            status: account.status,
+            currency: account.currency
+        }
+    });
+}
+module.exports = {
+    createAccountController,
     getUserAccountsController,
-    getAccountBalanceController
+    getAccountBalanceController,
+    updateAccountStatusController
 }

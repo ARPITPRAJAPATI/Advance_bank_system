@@ -6,5 +6,5 @@ const router = express.Router();
 router.post("/", authMiddleware.authMiddleware, accountController.createAccountController);
 router.get("/", authMiddleware.authMiddleware, accountController.getUserAccountsController)
 router.get("/balance/:accountId", authMiddleware.authMiddleware, accountController.getAccountBalanceController)
-
+router.patch("/:accountId/status", authMiddleware.authMiddleware, accountController.updateAccountStatusController);
 module.exports = router;

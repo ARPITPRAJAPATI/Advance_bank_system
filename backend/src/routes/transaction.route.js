@@ -4,12 +4,14 @@ const transactionController = require("../controllers/transaction.controller");
 
 const transactionRouter = express.Router();
 
-transactionRouter.post("/",authMiddleware.authMiddleware,transactionController.createTransaction)
-transactionRouter.get("/my-transactions",authMiddleware.authMiddleware,transactionController.getUserTransactions)
+transactionRouter.post("/", authMiddleware.authMiddleware, transactionController.createTransaction)
+transactionRouter.get("/my-transactions", authMiddleware.authMiddleware, transactionController.getUserTransactions)
 transactionRouter.post(
   "/system/initial-funds",
   authMiddleware.authSystemUserMiddleware,
   transactionController.createInitialFundsTransaction
 );
-
+transactionRouter.post("/withdraw",
+  authMiddleware.authMiddleware,
+  transactionController.createWithdrawalTransaction);
 module.exports = transactionRouter;

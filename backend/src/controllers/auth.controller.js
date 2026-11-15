@@ -1,20 +1,25 @@
 const { CommandFailedEvent } = require("mongodb")
 const userModel = require("../models/user.model")
-const jwt = require("jsonwebtoken"); 
+const jwt = require("jsonwebtoken");
 const emailService = require("../services/email.service")
 const tokenblacklistModel = require("../models/blackList.model");
 const tokenBlacklistModel = require("../models/blackList.model");
 
-
-async function userRegisterController(req,res){
+const COOKIE_OPTIONS = {
+    httpOnly: true, // Prevents client-side JS from stealing the token (Anti-XSS)
+    secure: process.env.NODE_ENV === "production", // Enforces HTTPS in production
+    sameSite: "lax", // Protects against Cross-Site Request Forgery (Anti-CSRF)
+    maxAge: 3 * 24 * 60 * 60 * 1000 // 3 days in milliseconds
+};
+async function userRegisterController(req, res) {
     try {
-        const {email,password,name} = req.body
-        
+        const { email, password, name } = req.body
+
         const isExists = await userModel.findOne({
             email: email
         })
 
-        if(isExists){
+        if (isExists) {
             return res.status(422).json({
                 message: "user already exists",
                 status: "failed"
@@ -22,28 +27,28 @@ async function userRegisterController(req,res){
         }
         const isFirstUser = (await userModel.countDocuments({})) === 0;
         const user = await userModel.create({
-            email,password,name,
+            email, password, name,
             systemUser: isFirstUser
         })
 
         const token = jwt.sign({
             userId: user._id,
-           
-        }, process.env.JWT_SECRET,{expiresIn:"3d"})
 
-        res.cookie("token", token)
-        
+        }, process.env.JWT_SECRET, { expiresIn: "3d" })
+
+        res.cookie("token", token, COOKIE_OPTIONS)
+
         res.status(201).json({
             message: "user registered",
-            user:{
-              _id: user._id,
-              email  : user.email,
-              name : user.name,
-              systemUser: user.systemUser
+            user: {
+                _id: user._id,
+                email: user.email,
+                name: user.name,
+                systemUser: user.systemUser
             }
         })
         try {
-            await emailService.sendRegistrationEmail(user.email,user.name)
+            await emailService.sendRegistrationEmail(user.email, user.name)
         } catch (emailErr) {
             console.error("Non-blocking email registration error:", emailErr);
         }
@@ -56,61 +61,61 @@ async function userRegisterController(req,res){
     }
 }
 
-async function userLoginController(req,res){
-    const {email,password} = req.body
+async function userLoginController(req, res) {
+    const { email, password } = req.body
 
-    const user = await userModel.findOne({email}).select("+password")
+    const user = await userModel.findOne({ email }).select("+password")
 
-    if(!user){
+    if (!user) {
         return res.status(401).json({
-            message:"Email or password is wrong"
+            message: "Email or password is wrong"
         })
     }
     const isValid = await user.comparePassword(password)
 
-    if(!isValid){
+    if (!isValid) {
         return res.status(401).json({
             message: "email or password is INVALID"
         })
     }
     const token = jwt.sign({
         userId: user._id,
-       
-    }, process.env.JWT_SECRET,{expiresIn:"3d"})
 
-    res.cookie("token", token)
-    
+    }, process.env.JWT_SECRET, { expiresIn: "3d" })
+
+    res.cookie("token", token, COOKIE_OPTIONS)
+
     res.status(200).json({
         message: "user logined",
-        user:{
-          _id: user._id,
-          email  : user.email,
-          name : user.name,
-          systemUser: user.systemUser
+        user: {
+            _id: user._id,
+            email: user.email,
+            name: user.name,
+            systemUser: user.systemUser
         }
     })
 };
 
 
-async function userLogoutController(req,res){
-     const token = req.cookies.token || 
+async function userLogoutController(req, res) {
+    const token = req.cookies.token ||
         (req.headers.authorization && req.headers.authorization.split(" ")[1]);
 
-     if(!token){
-         return res.status(401).json({message: "unAuth user , token is missing"})
-     }
-     res.clearCookie("token");
+    if (!token) {
+        return res.status(401).json({ message: "unAuth user , token is missing" })
+    }
+    res.clearCookie("token", COOKIE_OPTIONS);
 
-     await tokenBlacklistModel.create({
+    await tokenBlacklistModel.create({
         token: token
-     })
-     res.status(200).json({
+    })
+    res.status(200).json({
         message: "user logged out"
-     })
+    })
 }
 
 
-module.exports ={
+module.exports = {
     userRegisterController,
     userLoginController,
     userLogoutController

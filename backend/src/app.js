@@ -4,7 +4,7 @@ const accountRouter = require("./routes/account.route")
 const transactionRouter = require("./routes/transaction.route")
 const cookieParser = require("cookie-parser")
 const cors = require("cors")
-const app =express();
+const app = express();
 
 app.use(cors({
     origin: true,
@@ -13,9 +13,22 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser())
 
+
 app.use((req, res, next) => {
-    console.log(`REQUEST: ${req.method} ${req.url}`);
-    console.log(`BODY:`, req.body);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl || req.url}`);
+
+    if (req.body && Object.keys(req.body).length > 0) {
+        const sanitizedBody = { ...req.body };
+        const sensitiveFields = ['password', 'token', 'jwt', 'cvv', 'pin'];
+
+        sensitiveFields.forEach(field => {
+            if (sanitizedBody[field]) {
+                sanitizedBody[field] = '[REDACTED]';
+            }
+        });
+
+        console.log(`SANITIZED BODY:`, sanitizedBody);
+    }
     next();
 });
 
