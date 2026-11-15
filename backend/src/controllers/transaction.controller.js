@@ -2,6 +2,7 @@ const transactionModel = require("../models/transaction.model")
 const ledgerModel = require("../models/ledger.model")
 const accountModel = require("../models/account.model")
 const emailService = require("../services/email.service")
+const auditService = require("../services/audit.service")
 const mongoose = require("mongoose")
 
 async function createTransaction(req, res) {
@@ -152,6 +153,20 @@ async function createTransaction(req, res) {
         await session.commitTransaction();
         session.endSession();
 
+        // Audit Log: Transfer Success
+        await auditService.logAudit({
+            user: req.user._id,
+            action: 'TRANSFER_SUCCESS',
+            account: fromAccount,
+            details: {
+                amount: numericAmount,
+                toAccount,
+                transactionId: transaction._id,
+                idempotencyKey
+            },
+            req
+        });
+
     } catch (err) {
         await session.abortTransaction();
         session.endSession();
@@ -164,6 +179,20 @@ async function createTransaction(req, res) {
                 transaction: existingTxn
             });
         }
+
+        // Audit Log: Transfer Failed
+        await auditService.logAudit({
+            user: req.user._id,
+            action: 'TRANSFER_FAILED',
+            account: fromAccount,
+            details: {
+                amount: numericAmount,
+                toAccount,
+                error: err.message
+            },
+            status: 'FAILED',
+            req
+        });
 
         return res.status(500).json({
             message: "Transaction failed to process",
@@ -291,7 +320,7 @@ async function createInitialFundsTransaction(req, res) {
 async function createWithdrawalTransaction(req, res) {
     const { fromAccount, amount, idempotencyKey } = req.body;
 
-    // 1. Presence & Positive Amount Validation
+
     if (!fromAccount || amount === undefined || !idempotencyKey) {
         return res.status(400).json({
             message: "fromAccount, amount and idempotencyKey are required"
@@ -305,7 +334,7 @@ async function createWithdrawalTransaction(req, res) {
         });
     }
 
-    // 2. Ownership Check: Account MUST belong to the user
+
     const userAccount = await accountModel.findOne({
         _id: fromAccount,
         user: req.user._id
@@ -323,7 +352,7 @@ async function createWithdrawalTransaction(req, res) {
         });
     }
 
-    // 3. Idempotency Check
+
     const existing = await transactionModel.findOne({ idempotencyKey });
     if (existing) {
         return res.status(200).json({
@@ -332,7 +361,6 @@ async function createWithdrawalTransaction(req, res) {
         });
     }
 
-    // 4. Find System Liquidity Account (Receiver of the cash-out debit)
     const systemAccount = await accountModel.findOne().populate({
         path: 'user',
         match: { systemUser: true }
@@ -344,7 +372,6 @@ async function createWithdrawalTransaction(req, res) {
         });
     }
 
-    // 5. Balance Check
     const balance = await userAccount.getBalance();
     if (balance < numericAmount) {
         return res.status(400).json({
@@ -352,7 +379,7 @@ async function createWithdrawalTransaction(req, res) {
         });
     }
 
-    // 6. Atomic Double-Entry Session
+
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -368,7 +395,7 @@ async function createWithdrawalTransaction(req, res) {
 
         transaction = txn;
 
-        // Debit User Account
+
         await ledgerModel.create([{
             account: userAccount._id,
             amount: numericAmount,
@@ -376,7 +403,7 @@ async function createWithdrawalTransaction(req, res) {
             type: "DEBIT"
         }], { session });
 
-        // Credit System Cash Settlement Account
+
         await ledgerModel.create([{
             account: systemAccount._id,
             amount: numericAmount,
@@ -390,6 +417,19 @@ async function createWithdrawalTransaction(req, res) {
         await session.commitTransaction();
         session.endSession();
 
+        // Audit Log: Withdrawal Success
+        await auditService.logAudit({
+            user: req.user._id,
+            action: 'WITHDRAWAL_SUCCESS',
+            account: userAccount._id,
+            details: {
+                amount: numericAmount,
+                transactionId: transaction._id,
+                idempotencyKey
+            },
+            req
+        });
+
     } catch (err) {
         await session.abortTransaction();
         session.endSession();
@@ -402,13 +442,27 @@ async function createWithdrawalTransaction(req, res) {
             });
         }
 
+        // Audit Log: Withdrawal Failed
+        await auditService.logAudit({
+            user: req.user._id,
+            action: 'TRANSFER_FAILED',
+            account: userAccount._id,
+            details: {
+                type: 'WITHDRAWAL',
+                amount: numericAmount,
+                error: err.message
+            },
+            status: 'FAILED',
+            req
+        });
+
         return res.status(500).json({
             message: "Withdrawal failed to process",
             error: err.message
         });
     }
 
-    // 7. Non-blocking Email Alert
+
     try {
         await emailService.sendTransactionEmail(
             req.user.email,
@@ -425,3 +479,259 @@ async function createWithdrawalTransaction(req, res) {
         transaction
     });
 }
+
+
+async function getUserTransactions(req, res) {
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            type, // "DEBIT", "CREDIT"
+            status, // "COMPLETED", "PENDING", "FAILED"
+            startDate,
+            endDate
+        } = req.query;
+
+
+        const accounts = await accountModel.find({ user: req.user._id });
+        const accountIds = accounts.map(acc => acc._id);
+
+        if (accountIds.length === 0) {
+            return res.status(200).json({
+                transactions: [],
+                pagination: { total: 0, page: Number(page), limit: Number(limit), totalPages: 0 }
+            });
+        }
+
+
+        let filter = {
+            $or: [
+                { fromAccount: { $in: accountIds } },
+                { toAccount: { $in: accountIds } }
+            ]
+        };
+
+
+        if (status) {
+            filter.status = status.toUpperCase();
+        }
+
+
+        if (startDate || endDate) {
+            filter.createdAt = {};
+            if (startDate) filter.createdAt.$gte = new Date(startDate);
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                filter.createdAt.$lte = end;
+            }
+        }
+
+
+        if (type) {
+            if (type.toUpperCase() === "DEBIT") {
+                filter = { fromAccount: { $in: accountIds } };
+            } else if (type.toUpperCase() === "CREDIT") {
+                filter = { toAccount: { $in: accountIds } };
+            }
+        }
+
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.max(1, parseInt(limit));
+        const skip = (pageNum - 1) * limitNum;
+
+
+        const [total, transactions] = await Promise.all([
+            transactionModel.countDocuments(filter),
+            transactionModel.find(filter)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limitNum)
+                .populate('fromAccount', 'currency status')
+                .populate('toAccount', 'currency status')
+        ]);
+
+        return res.status(200).json({
+            transactions,
+            pagination: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum)
+            }
+        });
+
+    } catch (err) {
+        return res.status(500).json({
+            message: "Failed to fetch transactions",
+            error: err.message
+        });
+    }
+}
+
+
+async function getTransactionById(req, res) {
+    try {
+        const { id } = req.params;
+
+        const transaction = await transactionModel.findById(id)
+            .populate('fromAccount')
+            .populate('toAccount');
+
+        if (!transaction) {
+            return res.status(404).json({ message: "Transaction not found" });
+        }
+
+        // User accounts fetch karo to verify ownership
+        const userAccounts = await accountModel.find({ user: req.user._id });
+        const userAccountIds = userAccounts.map(a => a._id.toString());
+
+        const isSender = userAccountIds.includes(transaction.fromAccount._id.toString());
+        const isReceiver = userAccountIds.includes(transaction.toAccount._id.toString());
+
+        // Authorization: User must be either sender or receiver (or Admin)
+        if (!isSender && !isReceiver && !req.user.systemUser) {
+            return res.status(403).json({
+                message: "You are not authorized to view this transaction"
+            });
+        }
+
+        // Fetch associated double-entry ledger entries for full receipt audit!
+        const ledgerEntries = await ledgerModel.find({ transaction: transaction._id });
+
+        return res.status(200).json({
+            transaction,
+            receipt: {
+                direction: isSender ? "DEBIT" : "CREDIT",
+                ledgerAudit: ledgerEntries
+            }
+        });
+
+    } catch (err) {
+        return res.status(500).json({
+            message: "Failed to fetch transaction details",
+            error: err.message
+        });
+    }
+}
+async function getMonthlyAnalytics(req, res) {
+    try {
+        const { accountId, month, year } = req.query;
+
+        if (!accountId) {
+            return res.status(400).json({ message: "accountId query parameter is required" });
+        }
+
+        // Verify account ownership
+        const account = await accountModel.findOne({ _id: accountId, user: req.user._id });
+        if (!account) {
+            return res.status(404).json({ message: "Account not found or does not belong to you" });
+        }
+
+        // Default to current month and year if not provided
+        const currentYear = year ? parseInt(year) : new Date().getFullYear();
+        const currentMonth = month ? parseInt(month) - 1 : new Date().getMonth(); // 0-indexed in JS
+
+        const startDate = new Date(currentYear, currentMonth, 1, 0, 0, 0, 0);
+        const endDate = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+
+        // MongoDB Aggregation Pipeline on Ledger for this account and month
+        const analytics = await ledgerModel.aggregate([
+            {
+                $match: {
+                    account: account._id,
+                    createdAt: { $gte: startDate, $lte: endDate }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalCredit: {
+                        $sum: { $cond: [{ $eq: ["$type", "CREDIT"] }, "$amount", 0] }
+                    },
+                    totalDebit: {
+                        $sum: { $cond: [{ $eq: ["$type", "DEBIT"] }, "$amount", 0] }
+                    },
+                    transactionCount: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const totalCredit = analytics[0]?.totalCredit || 0;
+        const totalDebit = analytics[0]?.totalDebit || 0;
+        const netSavings = totalCredit - totalDebit;
+        const count = analytics[0]?.transactionCount || 0;
+
+        return res.status(200).json({
+            period: {
+                month: currentMonth + 1,
+                year: currentYear,
+                startDate,
+                endDate
+            },
+            summary: {
+                totalCredit,
+                totalDebit,
+                netSavings,
+                transactionCount: count,
+                financialHealth: netSavings >= 0 ? "SURPLUS" : "DEFICIT"
+            }
+        });
+
+    } catch (err) {
+        return res.status(500).json({
+            message: "Failed to generate monthly analytics",
+            error: err.message
+        });
+    }
+}
+
+async function reconcileLedger(req, res) {
+    try {
+        const audit = await ledgerModel.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalSystemCredits: {
+                        $sum: { $cond: [{ $eq: ["$type", "CREDIT"] }, "$amount", 0] }
+                    },
+                    totalSystemDebits: {
+                        $sum: { $cond: [{ $eq: ["$type", "DEBIT"] }, "$amount", 0] }
+                    },
+                    totalLedgerEntries: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const totalCredits = audit[0]?.totalSystemCredits || 0;
+        const totalDebits = audit[0]?.totalSystemDebits || 0;
+        const discrepancy = totalCredits - totalDebits;
+
+        return res.status(200).json({
+            timestamp: new Date().toISOString(),
+            isBalanced: discrepancy === 0,
+            audit: {
+                totalSystemCredits: totalCredits,
+                totalSystemDebits: totalDebits,
+                discrepancy, // Should strictly be 0 in double-entry!
+                totalLedgerEntries: audit[0]?.totalLedgerEntries || 0
+            },
+            status: discrepancy === 0 ? "AUDIT_PASSED" : "AUDIT_FAILED_INTEGRITY_COMPROMISED"
+        });
+
+    } catch (err) {
+        return res.status(500).json({
+            message: "Ledger reconciliation audit failed",
+            error: err.message
+        });
+    }
+}
+module.exports = {
+    createTransaction,
+    createInitialFundsTransaction,
+    createWithdrawalTransaction,
+    getUserTransactions,
+    getTransactionById,
+    getMonthlyAnalytics,
+    reconcileLedger
+};

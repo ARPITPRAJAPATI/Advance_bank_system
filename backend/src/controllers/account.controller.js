@@ -1,4 +1,5 @@
 const accountModel = require("../models/account.model")
+const auditService = require("../services/audit.service");
 
 async function createAccountController(req, res) {
     const user = req.user
@@ -70,8 +71,25 @@ async function updateAccountStatusController(req, res) {
     }
 
     // 4. Update and Save
-    account.status = status.toUpperCase();
+    const previousStatus = account.status;
+    const newStatus = status.toUpperCase();
+    account.status = newStatus;
     await account.save();
+
+    // 5. Audit Log Trigger (Non-blocking tracking for security & AI)
+    const actionMap = {
+        FROZEN: 'ACCOUNT_FROZEN',
+        CLOSED: 'ACCOUNT_CLOSED',
+        ACTIVE: 'ACCOUNT_UNFROZEN'
+    };
+
+    await auditService.logAudit({
+        user: req.user._id,
+        action: actionMap[newStatus] || 'ACCOUNT_UNFROZEN',
+        account: account._id,
+        details: { previousStatus, newStatus },
+        req
+    });
 
     return res.status(200).json({
         message: `Account status successfully updated to ${account.status}`,
@@ -82,6 +100,8 @@ async function updateAccountStatusController(req, res) {
         }
     });
 }
+
+
 module.exports = {
     createAccountController,
     getUserAccountsController,

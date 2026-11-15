@@ -1,8 +1,7 @@
-const { CommandFailedEvent } = require("mongodb")
 const userModel = require("../models/user.model")
 const jwt = require("jsonwebtoken");
 const emailService = require("../services/email.service")
-const tokenblacklistModel = require("../models/blackList.model");
+const auditService = require("../services/audit.service")
 const tokenBlacklistModel = require("../models/blackList.model");
 
 const COOKIE_OPTIONS = {
@@ -67,6 +66,14 @@ async function userLoginController(req, res) {
     const user = await userModel.findOne({ email }).select("+password")
 
     if (!user) {
+        // Audit log failed login
+        await auditService.logAudit({
+            action: 'LOGIN_ATTEMPT',
+            details: { email, reason: "User not found" },
+            status: 'FAILED',
+            req
+        });
+
         return res.status(401).json({
             message: "Email or password is wrong"
         })
@@ -74,10 +81,28 @@ async function userLoginController(req, res) {
     const isValid = await user.comparePassword(password)
 
     if (!isValid) {
+        // Audit log wrong password
+        await auditService.logAudit({
+            user: user._id,
+            action: 'LOGIN_ATTEMPT',
+            details: { email, reason: "Invalid password" },
+            status: 'FAILED',
+            req
+        });
+
         return res.status(401).json({
             message: "email or password is INVALID"
         })
     }
+
+    // Audit log successful login
+    await auditService.logAudit({
+        user: user._id,
+        action: 'LOGIN_ATTEMPT',
+        details: { email: user.email },
+        status: 'SUCCESS',
+        req
+    });
     const token = jwt.sign({
         userId: user._id,
 
