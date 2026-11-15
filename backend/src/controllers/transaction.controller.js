@@ -50,9 +50,22 @@ async function createTransaction(req, res) {
         });
     }
 
-    // 6. Idempotency Check (Existing Transaction Short-Circuit)
+    // 6. Idempotency Check with Parameter Match Verification (Stripe Standard)
     const isTransactonAlreadyExists = await transactionModel.findOne({ idempotencyKey });
+
     if (isTransactonAlreadyExists) {
+        // Security Check: Kya parameters match ho rahe hain?
+        const isMatching =
+            isTransactonAlreadyExists.fromAccount.toString() === fromAccount.toString() &&
+            isTransactonAlreadyExists.toAccount.toString() === toAccount.toString() &&
+            isTransactonAlreadyExists.amount === numericAmount;
+
+        if (!isMatching) {
+            return res.status(409).json({
+                message: "Idempotency Conflict: An existing transaction with this idempotencyKey was found, but the transaction parameters (amount, sender, or receiver) do not match."
+            });
+        }
+
         if (isTransactonAlreadyExists.status === "COMPLETED") {
             return res.status(200).json({
                 message: "Transaction already processed",
@@ -70,7 +83,6 @@ async function createTransaction(req, res) {
             });
         }
     }
-
     // 7. Active Status Check
     if (fromUserAccount.status !== "ACTIVE" || toUserAccount.status !== "ACTIVE") {
         return res.status(400).json({
@@ -78,49 +90,61 @@ async function createTransaction(req, res) {
         });
     }
 
-    // 8. Daily Transfer Limit Enforcement (e.g. Max ₹50,000 / day)
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-
-    const todaysDebits = await transactionModel.aggregate([
-        {
-            $match: {
-                fromAccount: fromUserAccount._id,
-                status: "COMPLETED",
-                createdAt: { $gte: startOfToday }
-            }
-        },
-        {
-            $group: {
-                _id: null,
-                totalToday: { $sum: "$amount" }
-            }
-        }
-    ]);
-    const spentToday = todaysDebits[0]?.totalToday || 0;
-    const DAILY_LIMIT = 50000;
-
-    if (spentToday + numericAmount > DAILY_LIMIT) {
-        return res.status(400).json({
-            message: `Daily transfer limit exceeded. Max daily limit: ₹${DAILY_LIMIT}. Already spent today: ₹${spentToday}. Attempted: ₹${numericAmount}`
-        });
-    }
-
-    // 9. Dynamic Balance Check
-    const balance = await fromUserAccount.getBalance();
-    if (balance < numericAmount) {
-        return res.status(400).json({
-            message: `Insufficient balance. Current balance is ${balance}. Required amount is ${numericAmount}`
-        });
-    }
-
-    // 10. Multi-Document ACID Session
+    // 8. Multi-Document ACID Session (Started early for concurrency isolation)
     const session = await mongoose.startSession();
     session.startTransaction();
 
     let transaction;
 
     try {
+        // A. Mutex Lock on Sender Account (Prevents concurrent race conditions)
+        await accountModel.findOneAndUpdate(
+            { _id: fromAccount },
+            { $set: { lastTransactionAt: new Date() } },
+            { session }
+        );
+
+        // B. Daily Transfer Limit Enforcement (Scoped inside session)
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
+        const todaysDebits = await transactionModel.aggregate([
+            {
+                $match: {
+                    fromAccount: fromUserAccount._id,
+                    status: "COMPLETED",
+                    createdAt: { $gte: startOfToday }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalToday: { $sum: "$amount" }
+                }
+            }
+        ]).session(session);
+
+        const spentToday = todaysDebits[0]?.totalToday || 0;
+        const DAILY_LIMIT = 50000;
+
+        if (spentToday + numericAmount > DAILY_LIMIT) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({
+                message: `Daily transfer limit exceeded. Max daily limit: ₹${DAILY_LIMIT}. Already spent today: ₹${spentToday}. Attempted: ₹${numericAmount}`
+            });
+        }
+
+        // C. Dynamic Balance Check
+        const balance = await fromUserAccount.getBalance();
+        if (balance < numericAmount) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({
+                message: `Insufficient balance. Current balance is ${balance}. Required amount is ${numericAmount}`
+            });
+        }
+
         const [txn] = await transactionModel.create([{
             fromAccount,
             toAccount,
@@ -355,6 +379,17 @@ async function createWithdrawalTransaction(req, res) {
 
     const existing = await transactionModel.findOne({ idempotencyKey });
     if (existing) {
+        // Security Check: Verify withdrawal parameters match the existing transaction
+        const isMatching =
+            existing.fromAccount.toString() === userAccount._id.toString() &&
+            existing.amount === numericAmount;
+
+        if (!isMatching) {
+            return res.status(409).json({
+                message: "Idempotency Conflict: An existing transaction with this idempotencyKey was found, but withdrawal parameters (amount or account) do not match."
+            });
+        }
+
         return res.status(200).json({
             message: "Withdrawal already processed",
             transaction: existing
@@ -372,19 +407,29 @@ async function createWithdrawalTransaction(req, res) {
         });
     }
 
-    const balance = await userAccount.getBalance();
-    if (balance < numericAmount) {
-        return res.status(400).json({
-            message: `Insufficient balance for withdrawal. Current balance: ${balance}, Requested: ${numericAmount}`
-        });
-    }
-
-
+    // Multi-Document ACID Session (Started early for concurrency isolation)
     const session = await mongoose.startSession();
     session.startTransaction();
 
     let transaction;
     try {
+        // A. Mutex Lock on User Account (Prevents concurrent double-withdrawal race condition)
+        await accountModel.findOneAndUpdate(
+            { _id: userAccount._id },
+            { $set: { lastTransactionAt: new Date() } },
+            { session }
+        );
+
+        // B. Dynamic Balance Check (Scoped inside session)
+        const balance = await userAccount.getBalance();
+        if (balance < numericAmount) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({
+                message: `Insufficient balance for withdrawal. Current balance: ${balance}, Requested: ${numericAmount}`
+            });
+        }
+
         const [txn] = await transactionModel.create([{
             fromAccount: userAccount._id,
             toAccount: systemAccount._id,
@@ -504,19 +549,28 @@ async function getUserTransactions(req, res) {
         }
 
 
-        let filter = {
-            $or: [
+        // 1. Base Filter decide karo based on Type (DEBIT vs CREDIT vs ALL)
+        let filter = {};
+
+        const upperType = type ? type.toUpperCase() : null;
+        if (upperType === "DEBIT") {
+            filter.fromAccount = { $in: accountIds };
+        } else if (upperType === "CREDIT") {
+            filter.toAccount = { $in: accountIds };
+        } else {
+            // Agar type nahi diya, toh user chahe sender ho ya receiver, dono transactions aayenge
+            filter.$or = [
                 { fromAccount: { $in: accountIds } },
                 { toAccount: { $in: accountIds } }
-            ]
-        };
+            ];
+        }
 
-
+        // 2. Status filter add karo (Bina overwrite kiye)
         if (status) {
             filter.status = status.toUpperCase();
         }
 
-
+        // 3. Date range filter add karo (Bina overwrite kiye)
         if (startDate || endDate) {
             filter.createdAt = {};
             if (startDate) filter.createdAt.$gte = new Date(startDate);
@@ -527,14 +581,6 @@ async function getUserTransactions(req, res) {
             }
         }
 
-
-        if (type) {
-            if (type.toUpperCase() === "DEBIT") {
-                filter = { fromAccount: { $in: accountIds } };
-            } else if (type.toUpperCase() === "CREDIT") {
-                filter = { toAccount: { $in: accountIds } };
-            }
-        }
 
         const pageNum = Math.max(1, parseInt(page));
         const limitNum = Math.max(1, parseInt(limit));
@@ -688,35 +734,81 @@ async function getMonthlyAnalytics(req, res) {
 
 async function reconcileLedger(req, res) {
     try {
-        const audit = await ledgerModel.aggregate([
-            {
-                $group: {
-                    _id: null,
-                    totalSystemCredits: {
-                        $sum: { $cond: [{ $eq: ["$type", "CREDIT"] }, "$amount", 0] }
-                    },
-                    totalSystemDebits: {
-                        $sum: { $cond: [{ $eq: ["$type", "DEBIT"] }, "$amount", 0] }
-                    },
-                    totalLedgerEntries: { $sum: 1 }
+        // Run both Macro (Global) and Micro (Per-Transaction) checks in parallel
+        const [globalAudit, unbalancedTransactions] = await Promise.all([
+            // 1. Layer 1: Macro Audit (Global Bank-wide Credits vs Debits)
+            ledgerModel.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalSystemCredits: {
+                            $sum: { $cond: [{ $eq: ["$type", "CREDIT"] }, "$amount", 0] }
+                        },
+                        totalSystemDebits: {
+                            $sum: { $cond: [{ $eq: ["$type", "DEBIT"] }, "$amount", 0] }
+                        },
+                        totalLedgerEntries: { $sum: 1 }
+                    }
                 }
-            }
+            ]),
+
+            // 2. Layer 2: Micro Audit (Per-Transaction Double-Entry Balance Verification)
+            ledgerModel.aggregate([
+                {
+                    $group: {
+                        _id: "$transaction",
+                        totalCredits: {
+                            $sum: { $cond: [{ $eq: ["$type", "CREDIT"] }, "$amount", 0] }
+                        },
+                        totalDebits: {
+                            $sum: { $cond: [{ $eq: ["$type", "DEBIT"] }, "$amount", 0] }
+                        },
+                        entryCount: { $sum: 1 }
+                    }
+                },
+                {
+                    $project: {
+                        transactionId: "$_id",
+                        totalCredits: 1,
+                        totalDebits: 1,
+                        entryCount: 1,
+                        discrepancy: { $subtract: ["$totalCredits", "$totalDebits"] }
+                    }
+                },
+                {
+                    $match: {
+                        $or: [
+                            { discrepancy: { $ne: 0 } },
+                            { entryCount: { $lt: 2 } }
+                        ]
+                    }
+                },
+                { $limit: 20 }
+            ])
         ]);
 
-        const totalCredits = audit[0]?.totalSystemCredits || 0;
-        const totalDebits = audit[0]?.totalSystemDebits || 0;
-        const discrepancy = totalCredits - totalDebits;
+        const totalCredits = globalAudit[0]?.totalSystemCredits || 0;
+        const totalDebits = globalAudit[0]?.totalSystemDebits || 0;
+        const globalDiscrepancy = totalCredits - totalDebits;
+
+        const isGloballyBalanced = globalDiscrepancy === 0;
+        const hasNoUnbalancedTxns = unbalancedTransactions.length === 0;
+        const isFullyAudited = isGloballyBalanced && hasNoUnbalancedTxns;
 
         return res.status(200).json({
             timestamp: new Date().toISOString(),
-            isBalanced: discrepancy === 0,
-            audit: {
+            isBalanced: isFullyAudited,
+            status: isFullyAudited ? "AUDIT_PASSED" : "AUDIT_FAILED_INTEGRITY_COMPROMISED",
+            macroAudit: {
                 totalSystemCredits: totalCredits,
                 totalSystemDebits: totalDebits,
-                discrepancy, // Should strictly be 0 in double-entry!
-                totalLedgerEntries: audit[0]?.totalLedgerEntries || 0
+                discrepancy: globalDiscrepancy,
+                totalLedgerEntries: globalAudit[0]?.totalLedgerEntries || 0
             },
-            status: discrepancy === 0 ? "AUDIT_PASSED" : "AUDIT_FAILED_INTEGRITY_COMPROMISED"
+            microAudit: {
+                corruptTransactionsFound: unbalancedTransactions.length,
+                unbalancedTransactions
+            }
         });
 
     } catch (err) {

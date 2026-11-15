@@ -16,8 +16,9 @@ async function getAuditLogsController(req, res) {
         if (action) filter.action = action;
         if (status) filter.status = status;
 
-        const pageNum = Math.max(1, parseInt(page));
-        const limitNum = Math.max(1, parseInt(limit));
+        // Defensive Pagination: NaN fallback + Maximum 100 limit cap (Anti-DoS)
+        const pageNum = Math.max(1, parseInt(page) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
         const skip = (pageNum - 1) * limitNum;
 
         const [total, logs] = await Promise.all([

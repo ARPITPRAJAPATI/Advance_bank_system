@@ -8,11 +8,8 @@ async function authMiddleware(req,res,next){
      if(!token){
          return res.status(401).json({message: "unAuth user , token is missing"})
      }
-     console.log("TOKEN:", token)
 
      const isTokenValid = await tokenBlacklistModel.findOne({ token })
-
-     console.log("BLACKLIST:", isTokenValid)
      
      if(isTokenValid){
         return res.status(401).json({message: "unAuth user , token is already used"})
