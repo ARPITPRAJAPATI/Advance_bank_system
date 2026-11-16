@@ -6,7 +6,7 @@ const auditRouter = require("./routes/audit.route")
 const cookieParser = require("cookie-parser")
 const cors = require("cors")
 const app = express();
-
+const aiRouter = require("./routes/ai.route");
 app.use(cors({
     origin: true,
     credentials: true
@@ -39,5 +39,5 @@ app.use("/api/account", accountRouter);
 app.use("/api/transaction", transactionRouter);
 app.use("/api/transactions", transactionRouter);
 app.use("/api/audit-logs", auditRouter);
-
+app.use("/api/ai", aiRouter);
 module.exports = app
