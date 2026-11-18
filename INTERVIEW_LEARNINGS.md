@@ -135,7 +135,7 @@ server {
 > **Answer:** *"By default, Nginx runs as a background daemon and forks worker processes. A Docker container only lives as long as its primary process (PID 1) is running. If Nginx runs as a daemon in the background, PID 1 exits immediately and Docker terminates the container with status 0. `daemon off;` forces Nginx to stay in the foreground as PID 1, keeping the container alive and streaming logs directly to `stdout`."*
 
 #### Q4: "What happens if a user refreshes the page on `/dashboard` in your React app without `try_files` in Nginx?"
-> **Answer:** *"Nginx will return a 404 HTTP error. Because React uses client-side routing (React Router HTML5 History API), `/dashboard` is a virtual route, not a physical directory on the Nginx file system. The `try_files $uri $uri/ /index.html;` directive instructs Nginx to first look for a file, then a directory, and if neither exists, fall back to serving `/index.html`, allowing React Router to hydrate and render the correct view."*
+> **Answer:** *"Nginx will return a 404 HTTP error. Because React uses client-side routing (React Router HTML5 History API), `/dashboard` is a virtual route, not a physical directory on the Nginx file system. The `try_files $uri $uri/ /index.html;` directive instructs Nginx to first look for a file, then a directory, and if neither exists, fall back to serving `/index.html`, allowing React Router to hydrate and render the correct view."'*
 
 ---
 
