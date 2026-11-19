@@ -8,14 +8,14 @@ const mongoose = require("mongoose")
 async function createTransaction(req, res) {
     const { fromAccount, toAccount, amount, idempotencyKey } = req.body;
 
-    // 1. Basic Presence Validation
+    
     if (!fromAccount || !toAccount || amount === undefined || !idempotencyKey) {
         return res.status(400).json({
             message: "fromAccount, toAccount, amount and idempotencyKey are required"
         });
     }
 
-    // 2. Strict Positive Number Validation (Negative/Zero Amount Defense)
+    
     const numericAmount = Number(amount);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
         return res.status(400).json({
@@ -23,14 +23,14 @@ async function createTransaction(req, res) {
         });
     }
 
-    // 3. Self-Transfer Block (Sender cannot be Receiver)
+    
     if (fromAccount.toString() === toAccount.toString()) {
         return res.status(400).json({
             message: "Sender and receiver accounts cannot be the same"
         });
     }
 
-    // 4. Critical Ownership Check: fromAccount MUST belong to the authenticated user!
+    
     const fromUserAccount = await accountModel.findOne({
         _id: fromAccount,
         user: req.user._id
@@ -42,7 +42,7 @@ async function createTransaction(req, res) {
         });
     }
 
-    // 5. Receiver Account Check
+    
     const toUserAccount = await accountModel.findOne({ _id: toAccount });
     if (!toUserAccount) {
         return res.status(404).json({
@@ -50,11 +50,11 @@ async function createTransaction(req, res) {
         });
     }
 
-    // 6. Idempotency Check with Parameter Match Verification (Stripe Standard)
+    
     const isTransactonAlreadyExists = await transactionModel.findOne({ idempotencyKey });
 
     if (isTransactonAlreadyExists) {
-        // Security Check: Kya parameters match ho rahe hain?
+        
         const isMatching =
             isTransactonAlreadyExists.fromAccount.toString() === fromAccount.toString() &&
             isTransactonAlreadyExists.toAccount.toString() === toAccount.toString() &&
@@ -83,28 +83,28 @@ async function createTransaction(req, res) {
             });
         }
     }
-    // 7. Active Status Check
+    
     if (fromUserAccount.status !== "ACTIVE" || toUserAccount.status !== "ACTIVE") {
         return res.status(400).json({
             message: "Both fromAccount and toAccount must be ACTIVE to process transaction"
         });
     }
 
-    // 8. Multi-Document ACID Session (Started early for concurrency isolation)
+    
     const session = await mongoose.startSession();
     session.startTransaction();
 
     let transaction;
 
     try {
-        // A. Mutex Lock on Sender Account (Prevents concurrent race conditions)
+        
         await accountModel.findOneAndUpdate(
             { _id: fromAccount },
             { $set: { lastTransactionAt: new Date() } },
             { session }
         );
 
-        // B. Daily Transfer Limit Enforcement (Scoped inside session)
+        
         const startOfToday = new Date();
         startOfToday.setHours(0, 0, 0, 0);
 
@@ -135,7 +135,7 @@ async function createTransaction(req, res) {
             });
         }
 
-        // C. Dynamic Balance Check
+        
         const balance = await fromUserAccount.getBalance();
         if (balance < numericAmount) {
             await session.abortTransaction();
@@ -155,7 +155,7 @@ async function createTransaction(req, res) {
 
         transaction = txn;
 
-        // Double-entry: Credit Recipient
+        
         await ledgerModel.create([{
             account: toAccount,
             amount: numericAmount,
@@ -163,7 +163,7 @@ async function createTransaction(req, res) {
             type: "CREDIT"
         }], { session });
 
-        // Double-entry: Debit Sender
+        
         await ledgerModel.create([{
             account: fromAccount,
             amount: numericAmount,
@@ -177,7 +177,7 @@ async function createTransaction(req, res) {
         await session.commitTransaction();
         session.endSession();
 
-        // Audit Log: Transfer Success
+        
         await auditService.logAudit({
             user: req.user._id,
             action: 'TRANSFER_SUCCESS',
@@ -195,7 +195,7 @@ async function createTransaction(req, res) {
         await session.abortTransaction();
         session.endSession();
 
-        // 👈 Concurrency Shield: Handle MongoDB E11000 Duplicate Key race condition!
+        
         if (err.code === 11000) {
             const existingTxn = await transactionModel.findOne({ idempotencyKey });
             return res.status(200).json({
@@ -204,7 +204,7 @@ async function createTransaction(req, res) {
             });
         }
 
-        // Audit Log: Transfer Failed
+        
         await auditService.logAudit({
             user: req.user._id,
             action: 'TRANSFER_FAILED',
@@ -224,7 +224,7 @@ async function createTransaction(req, res) {
         });
     }
 
-    // 11. Decoupled Non-blocking Notification
+    
     try {
         await emailService.sendTransactionEmail(
             req.user.email,
@@ -242,19 +242,17 @@ async function createTransaction(req, res) {
     });
 }
 
-
-
 async function createInitialFundsTransaction(req, res) {
     const { toAccount, amount, idempotencyKey } = req.body;
 
-    // Basic Presence Validation
+    
     if (!toAccount || amount === undefined || !idempotencyKey) {
         return res.status(400).json({
             message: "toAccount, amount and idempotencyKey are required"
         });
     }
 
-    // Strict Positive Number Check
+    
     const numericAmount = Number(amount);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
         return res.status(400).json({
@@ -344,7 +342,6 @@ async function createInitialFundsTransaction(req, res) {
 async function createWithdrawalTransaction(req, res) {
     const { fromAccount, amount, idempotencyKey } = req.body;
 
-
     if (!fromAccount || amount === undefined || !idempotencyKey) {
         return res.status(400).json({
             message: "fromAccount, amount and idempotencyKey are required"
@@ -357,7 +354,6 @@ async function createWithdrawalTransaction(req, res) {
             message: "Amount must be a valid positive number greater than 0"
         });
     }
-
 
     const userAccount = await accountModel.findOne({
         _id: fromAccount,
@@ -376,10 +372,9 @@ async function createWithdrawalTransaction(req, res) {
         });
     }
 
-
     const existing = await transactionModel.findOne({ idempotencyKey });
     if (existing) {
-        // Security Check: Verify withdrawal parameters match the existing transaction
+        
         const isMatching =
             existing.fromAccount.toString() === userAccount._id.toString() &&
             existing.amount === numericAmount;
@@ -407,20 +402,20 @@ async function createWithdrawalTransaction(req, res) {
         });
     }
 
-    // Multi-Document ACID Session (Started early for concurrency isolation)
+    
     const session = await mongoose.startSession();
     session.startTransaction();
 
     let transaction;
     try {
-        // A. Mutex Lock on User Account (Prevents concurrent double-withdrawal race condition)
+        
         await accountModel.findOneAndUpdate(
             { _id: userAccount._id },
             { $set: { lastTransactionAt: new Date() } },
             { session }
         );
 
-        // B. Dynamic Balance Check (Scoped inside session)
+        
         const balance = await userAccount.getBalance();
         if (balance < numericAmount) {
             await session.abortTransaction();
@@ -440,14 +435,12 @@ async function createWithdrawalTransaction(req, res) {
 
         transaction = txn;
 
-
         await ledgerModel.create([{
             account: userAccount._id,
             amount: numericAmount,
             transaction: transaction._id,
             type: "DEBIT"
         }], { session });
-
 
         await ledgerModel.create([{
             account: systemAccount._id,
@@ -462,7 +455,7 @@ async function createWithdrawalTransaction(req, res) {
         await session.commitTransaction();
         session.endSession();
 
-        // Audit Log: Withdrawal Success
+        
         await auditService.logAudit({
             user: req.user._id,
             action: 'WITHDRAWAL_SUCCESS',
@@ -487,7 +480,7 @@ async function createWithdrawalTransaction(req, res) {
             });
         }
 
-        // Audit Log: Withdrawal Failed
+        
         await auditService.logAudit({
             user: req.user._id,
             action: 'TRANSFER_FAILED',
@@ -507,7 +500,6 @@ async function createWithdrawalTransaction(req, res) {
         });
     }
 
-
     try {
         await emailService.sendTransactionEmail(
             req.user.email,
@@ -525,18 +517,16 @@ async function createWithdrawalTransaction(req, res) {
     });
 }
 
-
 async function getUserTransactions(req, res) {
     try {
         const {
             page = 1,
             limit = 10,
-            type, // "DEBIT", "CREDIT"
-            status, // "COMPLETED", "PENDING", "FAILED"
+            type, 
+            status, 
             startDate,
             endDate
         } = req.query;
-
 
         const accounts = await accountModel.find({ user: req.user._id });
         const accountIds = accounts.map(acc => acc._id);
@@ -548,8 +538,7 @@ async function getUserTransactions(req, res) {
             });
         }
 
-
-        // 1. Base Filter decide karo based on Type (DEBIT vs CREDIT vs ALL)
+        
         let filter = {};
 
         const upperType = type ? type.toUpperCase() : null;
@@ -558,19 +547,19 @@ async function getUserTransactions(req, res) {
         } else if (upperType === "CREDIT") {
             filter.toAccount = { $in: accountIds };
         } else {
-            // Agar type nahi diya, toh user chahe sender ho ya receiver, dono transactions aayenge
+            
             filter.$or = [
                 { fromAccount: { $in: accountIds } },
                 { toAccount: { $in: accountIds } }
             ];
         }
 
-        // 2. Status filter add karo (Bina overwrite kiye)
+        
         if (status) {
             filter.status = status.toUpperCase();
         }
 
-        // 3. Date range filter add karo (Bina overwrite kiye)
+        
         if (startDate || endDate) {
             filter.createdAt = {};
             if (startDate) filter.createdAt.$gte = new Date(startDate);
@@ -581,11 +570,9 @@ async function getUserTransactions(req, res) {
             }
         }
 
-
         const pageNum = Math.max(1, parseInt(page));
         const limitNum = Math.max(1, parseInt(limit));
         const skip = (pageNum - 1) * limitNum;
-
 
         const [total, transactions] = await Promise.all([
             transactionModel.countDocuments(filter),
@@ -615,7 +602,6 @@ async function getUserTransactions(req, res) {
     }
 }
 
-
 async function getTransactionById(req, res) {
     try {
         const { id } = req.params;
@@ -628,21 +614,21 @@ async function getTransactionById(req, res) {
             return res.status(404).json({ message: "Transaction not found" });
         }
 
-        // User accounts fetch karo to verify ownership
+        
         const userAccounts = await accountModel.find({ user: req.user._id });
         const userAccountIds = userAccounts.map(a => a._id.toString());
 
         const isSender = userAccountIds.includes(transaction.fromAccount._id.toString());
         const isReceiver = userAccountIds.includes(transaction.toAccount._id.toString());
 
-        // Authorization: User must be either sender or receiver (or Admin)
+        
         if (!isSender && !isReceiver && !req.user.systemUser) {
             return res.status(403).json({
                 message: "You are not authorized to view this transaction"
             });
         }
 
-        // Fetch associated double-entry ledger entries for full receipt audit!
+        
         const ledgerEntries = await ledgerModel.find({ transaction: transaction._id });
 
         return res.status(200).json({
@@ -668,20 +654,20 @@ async function getMonthlyAnalytics(req, res) {
             return res.status(400).json({ message: "accountId query parameter is required" });
         }
 
-        // Verify account ownership
+        
         const account = await accountModel.findOne({ _id: accountId, user: req.user._id });
         if (!account) {
             return res.status(404).json({ message: "Account not found or does not belong to you" });
         }
 
-        // Default to current month and year if not provided
+        
         const currentYear = year ? parseInt(year) : new Date().getFullYear();
-        const currentMonth = month ? parseInt(month) - 1 : new Date().getMonth(); // 0-indexed in JS
+        const currentMonth = month ? parseInt(month) - 1 : new Date().getMonth(); 
 
         const startDate = new Date(currentYear, currentMonth, 1, 0, 0, 0, 0);
         const endDate = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
 
-        // MongoDB Aggregation Pipeline on Ledger for this account and month
+        
         const analytics = await ledgerModel.aggregate([
             {
                 $match: {
@@ -734,9 +720,9 @@ async function getMonthlyAnalytics(req, res) {
 
 async function reconcileLedger(req, res) {
     try {
-        // Run both Macro (Global) and Micro (Per-Transaction) checks in parallel
+        
         const [globalAudit, unbalancedTransactions] = await Promise.all([
-            // 1. Layer 1: Macro Audit (Global Bank-wide Credits vs Debits)
+            
             ledgerModel.aggregate([
                 {
                     $group: {
@@ -752,7 +738,7 @@ async function reconcileLedger(req, res) {
                 }
             ]),
 
-            // 2. Layer 2: Micro Audit (Per-Transaction Double-Entry Balance Verification)
+            
             ledgerModel.aggregate([
                 {
                     $group: {

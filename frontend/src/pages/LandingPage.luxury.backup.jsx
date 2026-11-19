@@ -6,10 +6,6 @@ import Button from '../components/Button';
 import { useAuth } from '../context/AuthContext';
 import { Wifi, ArrowRight } from 'lucide-react';
 
-/**
- * Backup of original Nova Pay 3D Landing Page
- * Saved so it can be restored or referenced whenever needed.
- */
 export default function LandingPageLuxuryBackup() {
   const navigate = useNavigate();
   const { isAuthenticated, logout } = useAuth();

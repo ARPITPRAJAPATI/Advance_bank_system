@@ -50,7 +50,6 @@ const auditLogSchema = new mongoose.Schema(
     }
 );
 
-
 auditLogSchema.index({ user: 1, createdAt: -1 });
 
 const auditLogModel = mongoose.model('auditLog', auditLogSchema);

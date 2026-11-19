@@ -41,7 +41,6 @@ async function updateAccountStatusController(req, res) {
     const { accountId } = req.params;
     const { status } = req.body;
 
-
     const allowedStatuses = ["ACTIVE", "FROZEN", "CLOSED"];
     if (!status || !allowedStatuses.includes(status.toUpperCase())) {
         return res.status(400).json({
@@ -49,10 +48,10 @@ async function updateAccountStatusController(req, res) {
         });
     }
 
-    // 2. Ownership Check: Account must belong to the logged-in user (or System Admin)
+    
     const query = { _id: accountId };
     if (!req.user.systemUser) {
-        query.user = req.user._id; // Regular users can only freeze/unfreeze their own accounts
+        query.user = req.user._id; 
     }
 
     const account = await accountModel.findOne(query);
@@ -63,20 +62,20 @@ async function updateAccountStatusController(req, res) {
         });
     }
 
-    // 3. Prevent reopening CLOSED accounts (Banking rule: Closed accounts cannot be revived)
+    
     if (account.status === "CLOSED") {
         return res.status(400).json({
             message: "Closed accounts cannot be modified or reactivated"
         });
     }
 
-    // 4. Update and Save
+    
     const previousStatus = account.status;
     const newStatus = status.toUpperCase();
     account.status = newStatus;
     await account.save();
 
-    // 5. Audit Log Trigger (Non-blocking tracking for security & AI)
+    
     const actionMap = {
         FROZEN: 'ACCOUNT_FROZEN',
         CLOSED: 'ACCOUNT_CLOSED',
@@ -100,7 +99,6 @@ async function updateAccountStatusController(req, res) {
         }
     });
 }
-
 
 module.exports = {
     createAccountController,

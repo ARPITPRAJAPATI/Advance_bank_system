@@ -12,14 +12,14 @@ export default function App() {
 
   return (
     <Routes>
-      {/* Landing Page */}
+      {}
       <Route path="/" element={<LandingPage />} />
 
-      {/* Auth Pages */}
+      {}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      {/* Protected Banking Dashboard */}
+      {}
       <Route
         path="/dashboard"
         element={
@@ -29,7 +29,7 @@ export default function App() {
         }
       />
 
-      {/* Catch-all redirect */}
+      {}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -26,11 +26,11 @@ export default function LandingPage() {
 
       <main className="flex-1 relative z-10">
         
-        {/* Hero Section */}
+        {}
         <section className="pt-12 pb-20 lg:pt-20 lg:pb-32 px-6 sm:px-10 max-w-7xl mx-auto w-full">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
-            {/* Left Content */}
+            {}
             <div className="lg:col-span-6 space-y-8 text-left">
               <div className="space-y-1">
                 <div className="text-5xl sm:text-6xl font-extrabold tracking-tight text-white flex items-center gap-2">
@@ -61,7 +61,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Right Card Mockup */}
+            {}
             <div className="lg:col-span-6 relative flex justify-center items-center py-6 [perspective:1200px]">
               <div className="animate-float-3d relative flex justify-center items-center">
 
@@ -155,7 +155,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Trust Section */}
+        {}
         <section className="bg-[#12161F] border-y border-white/[0.08] py-8 px-6">
           <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-8 text-center sm:text-left">
             <div className="flex items-center gap-4 border-r-0 sm:border-r border-white/10 pr-0 sm:pr-8">
@@ -178,7 +178,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Features Section */}
+        {}
         <section id="features" className="py-24 px-6 max-w-7xl mx-auto w-full space-y-16">
           <div className="text-left space-y-2">
             <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
@@ -222,7 +222,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* CTA Section */}
+        {}
         <section className="py-20 px-6 max-w-4xl mx-auto text-center">
           <TiltCard maxTilt={8} className="p-12 rounded-3xl bg-[#12161F]/90 border border-white/10 space-y-6 backdrop-blur-xl shadow-2xl">
             <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
@@ -245,7 +245,7 @@ export default function LandingPage() {
 
       </main>
 
-      {/* Footer */}
+      {}
       <footer className="border-t border-white/[0.08] py-8 bg-[#0A0C10] text-center text-xs text-slate-500 relative z-10">
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm font-bold text-white">

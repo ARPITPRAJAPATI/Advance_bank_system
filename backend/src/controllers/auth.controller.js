@@ -5,10 +5,10 @@ const auditService = require("../services/audit.service")
 const tokenBlacklistModel = require("../models/blackList.model");
 
 const COOKIE_OPTIONS = {
-    httpOnly: true, // Prevents client-side JS from stealing the token (Anti-XSS)
-    secure: process.env.NODE_ENV === "production", // Enforces HTTPS in production
-    sameSite: "lax", // Protects against Cross-Site Request Forgery (Anti-CSRF)
-    maxAge: 3 * 24 * 60 * 60 * 1000 // 3 days in milliseconds
+    httpOnly: true, 
+    secure: process.env.NODE_ENV === "production", 
+    sameSite: "lax", 
+    maxAge: 3 * 24 * 60 * 60 * 1000 
 };
 async function userRegisterController(req, res) {
     try {
@@ -66,7 +66,7 @@ async function userLoginController(req, res) {
     const user = await userModel.findOne({ email }).select("+password")
 
     if (!user) {
-        // Audit log failed login
+        
         await auditService.logAudit({
             action: 'LOGIN_ATTEMPT',
             details: { email, reason: "User not found" },
@@ -81,7 +81,7 @@ async function userLoginController(req, res) {
     const isValid = await user.comparePassword(password)
 
     if (!isValid) {
-        // Audit log wrong password
+        
         await auditService.logAudit({
             user: user._id,
             action: 'LOGIN_ATTEMPT',
@@ -95,7 +95,7 @@ async function userLoginController(req, res) {
         })
     }
 
-    // Audit log successful login
+    
     await auditService.logAudit({
         user: user._id,
         action: 'LOGIN_ATTEMPT',
@@ -121,7 +121,6 @@ async function userLoginController(req, res) {
     })
 };
 
-
 async function userLogoutController(req, res) {
     const token = req.cookies.token ||
         (req.headers.authorization && req.headers.authorization.split(" ")[1]);
@@ -138,7 +137,6 @@ async function userLogoutController(req, res) {
         message: "user logged out"
     })
 }
-
 
 module.exports = {
     userRegisterController,

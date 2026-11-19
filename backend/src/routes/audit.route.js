@@ -4,8 +4,6 @@ const auditController = require('../controllers/audit.controller');
 
 const router = express.Router();
 
-// Bank Security Rule: Audit logs sirf Bank Admin / System User hi dekh sakta hai!
-// Isliye hum authSystemUserMiddleware use kar rahe hain:
 router.get(
     '/',
     authMiddleware.authSystemUserMiddleware,

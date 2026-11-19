@@ -1,4 +1,3 @@
-
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
@@ -12,7 +11,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Verify the connection configuration
 transporter.verify((error, success) => {
   if (error) {
     console.error('Error connecting to email server:', error);
@@ -21,15 +19,14 @@ transporter.verify((error, success) => {
   }
 });
 
-// Function to send email
 const sendEmail = async (to, subject, text, html) => {
   try {
     const info = await transporter.sendMail({
-      from: `"Kube Pay" <${process.env.EMAIL_USER}>`, // sender address
-      to, // list of receivers
-      subject, // Subject line
-      text, // plain text body
-      html, // html body
+      from: `"Kube Pay" <${process.env.EMAIL_USER}>`, 
+      to, 
+      subject, 
+      text, 
+      html, 
     });
 
     console.log('Message sent: %s', info.messageId);

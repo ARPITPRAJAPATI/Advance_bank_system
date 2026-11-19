@@ -7,7 +7,6 @@ const groq = new Groq({
 
 const MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 
-// Strict Banking Guardrails Prompt (Constitutional AI)
 const BANKING_SYSTEM_PROMPT = `
 You are "KubePay Financial Copilot", an elite, secure, and professional autonomous banking AI assistant embedded in KubePay core banking system.
 
@@ -19,34 +18,28 @@ Your core operational principles:
 5. TONE: Courteous, concise, modern, and financially sound. Support both English and Hinglish seamlessly.
 `;
 
-/**
- * Executes a multi-turn ReAct agent loop with Groq tool-calling.
- * @param {string} userMessage - The message from the customer
- * @param {Array} conversationHistory - Prior conversation messages [{role, content}]
- * @param {Object} user - Authenticated user session object from req.user
- */
 async function runBankingAgent(userMessage, conversationHistory = [], user) {
-    // 1. Build message history starting with System Guardrails
+    
     const messages = [
         { role: "system", content: BANKING_SYSTEM_PROMPT },
-        ...conversationHistory.slice(-10), // Keep last 10 messages for context memory
+        ...conversationHistory.slice(-10), 
         { role: "user", content: userMessage }
     ];
 
     let turns = 0;
-    const MAX_TURNS = 5; // Safety circuit-breaker against infinite agent loops
+    const MAX_TURNS = 5; 
     let pendingAction = null;
 
     while (turns < MAX_TURNS) {
         turns++;
 
-        // 2. Call Groq with Function Calling schemas
+        
         const completion = await groq.chat.completions.create({
             model: MODEL,
             messages,
             tools: toolsSchema,
             tool_choice: "auto",
-            temperature: 0.2 // Low temperature for deterministic, factual outputs
+            temperature: 0.2 
         });
 
         const responseMessage = completion.choices[0]?.message;
@@ -54,7 +47,7 @@ async function runBankingAgent(userMessage, conversationHistory = [], user) {
             throw new Error("No response received from Groq LPU.");
         }
 
-        // 3. If model does NOT want to call any tools, we are DONE!
+        
         if (!responseMessage.tool_calls || responseMessage.tool_calls.length === 0) {
             return {
                 reply: responseMessage.content,
@@ -62,8 +55,8 @@ async function runBankingAgent(userMessage, conversationHistory = [], user) {
             };
         }
 
-        // 4. Model wants to invoke one or more tools (ReAct Action Stage)
-        messages.push(responseMessage); // Add assistant's tool-call intent to conversation
+        
+        messages.push(responseMessage); 
 
         for (const toolCall of responseMessage.tool_calls) {
             const functionName = toolCall.function.name;
@@ -74,10 +67,10 @@ async function runBankingAgent(userMessage, conversationHistory = [], user) {
                 functionArgs = {};
             }
 
-            // Execute the tool in our safe backend
+            
             const toolResult = await executeToolCall(functionName, functionArgs, user);
 
-            // If prepare_transfer generated a Human-in-the-Loop token, capture it for the frontend
+            
             if (toolResult?.actionRequired === "HUMAN_CONFIRMATION_REQUIRED") {
                 pendingAction = {
                     type: "TRANSFER_CONFIRMATION_REQUIRED",
@@ -86,7 +79,7 @@ async function runBankingAgent(userMessage, conversationHistory = [], user) {
                 };
             }
 
-            // Send tool result back to Groq (Observation Stage)
+            
             messages.push({
                 role: "tool",
                 tool_call_id: toolCall.id,
@@ -94,7 +87,7 @@ async function runBankingAgent(userMessage, conversationHistory = [], user) {
                 content: JSON.stringify(toolResult)
             });
         }
-        // Loop repeats: Groq reads the tool observation and synthesizes the next answer or tool!
+        
     }
 
     return {

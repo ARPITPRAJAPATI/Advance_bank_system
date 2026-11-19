@@ -6,7 +6,7 @@ pipeline {
         DOCKER_USER     = 'aruhehe'
         BACKEND_IMAGE   = 'aruhehe/kubepay-backend'
         FRONTEND_IMAGE  = 'aruhehe/kubepay-frontend'
-        // Auto-pilot: Uses Jenkins BUILD_NUMBER (1, 2, 3...) automatically
+        
         TAG             = "${params.DOCKER_TAG ?: env.BUILD_NUMBER}"
     }
 
@@ -66,12 +66,12 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry([credentialsId: 'docker', url: '']) {
-                        // Build & Push Backend (Both version tag and latest alias)
+                        
                         sh "docker build -t ${BACKEND_IMAGE}:${TAG} -t ${BACKEND_IMAGE}:latest ./backend"
                         sh "docker push ${BACKEND_IMAGE}:${TAG}"
                         sh "docker push ${BACKEND_IMAGE}:latest"
 
-                        // Build & Push Frontend (Both version tag and latest alias)
+                        
                         sh "docker build -t ${FRONTEND_IMAGE}:${TAG} -t ${FRONTEND_IMAGE}:latest ./frontend"
                         sh "docker push ${FRONTEND_IMAGE}:${TAG}"
                         sh "docker push ${FRONTEND_IMAGE}:latest"
@@ -102,7 +102,7 @@ pipeline {
 
     post {
         always {
-            // Keep security reports as artifacts in Jenkins
+            
             archiveArtifacts artifacts: '*.html, **/dependency-check-report.xml', allowEmptyArchive: true
             echo "🎉 CI Pipeline Finished! Deployed images tagged with ${TAG}"
         }

@@ -47,4 +47,3 @@ ledgerSchema.pre('updateMany', preventLedgerModification);
 const ledgerModel = mongoose.model("ledger",ledgerSchema)
 
 module.exports = ledgerModel;
-    

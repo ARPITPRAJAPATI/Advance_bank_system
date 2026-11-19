@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // If already logged in, redirect to dashboard
+  
   React.useEffect(() => {
     if (isAuthenticated) {
       navigate('/dashboard', { replace: true });
@@ -53,7 +53,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#0A0C10] text-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-[#12161F] border border-white/10 rounded-2xl p-8 shadow-2xl">
         
-        {/* Header / Brand */}
+        {}
         <div className="text-center mb-8">
           <div className="w-12 h-12 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-white text-xl font-bold mx-auto mb-3">
             ✦
@@ -62,14 +62,14 @@ export default function LoginPage() {
           <p className="text-sm text-slate-400 mt-1">Enter your credentials to access your banking account</p>
         </div>
 
-        {/* Error Alert */}
+        {}
         {error && (
           <div className="mb-6 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium">
             {error}
           </div>
         )}
 
-        {/* Login Form */}
+        {}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">Email Address</label>
@@ -119,7 +119,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Footer Link */}
+        {}
         <div className="mt-8 pt-6 border-t border-white/10 text-center text-xs text-slate-400">
           Don't have an account yet?{' '}
           <Link to="/register" className="text-white font-semibold hover:underline">

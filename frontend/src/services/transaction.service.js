@@ -1,6 +1,5 @@
 import api from './api';
 
-// Helper to generate a unique idempotency key
 const generateIdempotencyKey = () => {
   return 'txn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
 };

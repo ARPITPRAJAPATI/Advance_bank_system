@@ -3,7 +3,6 @@ const accountModel = require("../models/account.model");
 const transactionModel = require("../models/transaction.model");
 const ledgerModel = require("../models/ledger.model");
 
-// 1. Tool Schemas (Groq / OpenAI Compatible JSON Schema)
 const toolsSchema = [
     {
         type: "function",
@@ -116,7 +115,6 @@ const toolsSchema = [
     }
 ];
 
-// 2. Tool Execution Logic (Actual Database Runners)
 async function executeToolCall(name, args, user) {
     switch (name) {
         case "get_balance": {
@@ -216,12 +214,12 @@ async function executeToolCall(name, args, user) {
                 return { error: `Insufficient balance. Available: ₹${balance}, Required: ₹${numericAmount}` };
             }
 
-            // Generate Cryptographically Signed Confirmation Token (Valid for 5 mins)
+            
             const payload = {
                 fromAccount: fromAccount._id.toString(),
                 toAccount: toAccount._id.toString(),
                 amount: numericAmount,
-                expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes TTL
+                expiresAt: Date.now() + 5 * 60 * 1000 
             };
 
             const payloadStr = JSON.stringify(payload);

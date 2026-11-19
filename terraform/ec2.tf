@@ -1,8 +1,6 @@
-# 1. Default VPC
 resource "aws_default_vpc" "default" {
 }
 
-# 2. Dynamic lookup for latest Ubuntu 22.04 LTS AMI if ami_id is not specified
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["099720109477"]
@@ -18,20 +16,17 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-# 3. Auto-generate RSA key pair if local public_key_path file does not exist
 resource "tls_private_key" "generated" {
   count     = fileexists(var.public_key_path) ? 0 : 1
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
-# 4. AWS Key Pair (uses local public key file if available, or generated key)
 resource "aws_key_pair" "deployer" {
   key_name   = var.key_name
   public_key = fileexists(var.public_key_path) ? file(var.public_key_path) : tls_private_key.generated[0].public_key_openssh
 }
 
-# 5. Security Group attached to Default VPC
 resource "aws_security_group" "ec2_sg" {
   name        = "ec2-default-vpc-sg"
   description = "Security group for EC2 instance in default VPC"
@@ -74,7 +69,6 @@ resource "aws_security_group" "ec2_sg" {
   }
 }
 
-# 6. EC2 Instance in Default VPC with SSH Key Pair attached
 resource "aws_instance" "web" {
   ami                    = var.ami_id != "" ? var.ami_id : data.aws_ami.ubuntu.id
   instance_type          = var.instance_type

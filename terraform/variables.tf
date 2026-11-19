@@ -26,4 +26,4 @@ variable "public_key_path" {
   description = "Path to local SSH public key file (~/.ssh/id_rsa.pub)"
   type        = string
   default     = "~/.ssh/id_rsa.pub"
-} 
+}

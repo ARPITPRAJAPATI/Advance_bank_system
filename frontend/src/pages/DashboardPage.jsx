@@ -28,7 +28,7 @@ import {
 export default function DashboardPage() {
   const { user, logout } = useAuth();
 
-  // State
+  
   const [accounts, setAccounts] = useState([]);
   const [balances, setBalances] = useState({});
   const [transactions, setTransactions] = useState([]);
@@ -37,16 +37,16 @@ export default function DashboardPage() {
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [isRefreshingTxns, setIsRefreshingTxns] = useState(false);
   
-  // Transfer Form State
+  
   const [transferData, setTransferData] = useState({
     fromAccount: '',
     toAccount: '',
     amount: '',
   });
   const [transferLoading, setTransferLoading] = useState(false);
-  const [transferMessage, setTransferMessage] = useState(null); // { type: 'success' | 'error', text: '' }
+  const [transferMessage, setTransferMessage] = useState(null); 
 
-  // Initial Funds Deposit Form State
+  
   const [depositData, setDepositData] = useState({
     toAccount: '',
     amount: '',
@@ -54,10 +54,10 @@ export default function DashboardPage() {
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositMessage, setDepositMessage] = useState(null);
 
-  // Copied Account ID feedback
+  
   const [copiedId, setCopiedId] = useState('');
 
-  // 1. Fetch User Accounts
+  
   const fetchAccounts = async () => {
     setIsLoadingAccounts(true);
     try {
@@ -65,7 +65,7 @@ export default function DashboardPage() {
       const userAccounts = data.accounts || [];
       setAccounts(userAccounts);
 
-      // Auto set default selected fromAccount in transfer form
+      
       if (userAccounts.length > 0) {
         setTransferData((prev) => ({
           ...prev,
@@ -77,7 +77,7 @@ export default function DashboardPage() {
         }));
       }
 
-      // Fetch balances for each account
+      
       userAccounts.forEach((acc) => {
         fetchAccountBalance(acc._id);
       });
@@ -88,7 +88,7 @@ export default function DashboardPage() {
     }
   };
 
-  // 2. Fetch specific account balance
+  
   const fetchAccountBalance = async (accountId) => {
     try {
       const res = await getAccountBalanceApi(accountId);
@@ -101,7 +101,7 @@ export default function DashboardPage() {
     }
   };
 
-  // 3. Fetch Transaction History
+  
   const fetchTransactions = async () => {
     setIsRefreshingTxns(true);
     try {
@@ -114,13 +114,13 @@ export default function DashboardPage() {
     }
   };
 
-  // Initial Load
+  
   useEffect(() => {
     fetchAccounts();
     fetchTransactions();
   }, []);
 
-  // Handler: Create New Bank Account
+  
   const handleCreateAccount = async () => {
     setIsCreatingAccount(true);
     try {
@@ -133,14 +133,14 @@ export default function DashboardPage() {
     }
   };
 
-  // Handler: Copy Account ID
+  
   const handleCopyId = (id) => {
     navigator.clipboard.writeText(id);
     setCopiedId(id);
     setTimeout(() => setCopiedId(''), 2000);
   };
 
-  // Handler: Perform Money Transfer
+  
   const handleTransferSubmit = async (e) => {
     e.preventDefault();
     if (!transferData.fromAccount || !transferData.toAccount || !transferData.amount) {
@@ -168,10 +168,10 @@ export default function DashboardPage() {
         text: res.message || 'Transfer completed successfully!',
       });
 
-      // Clear amount input
+      
       setTransferData((prev) => ({ ...prev, amount: '' }));
 
-      // Refresh accounts, balances & transactions
+      
       await fetchAccounts();
       await fetchTransactions();
     } catch (err) {
@@ -184,7 +184,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Handler: Deposit Initial Funds
+  
   const handleDepositSubmit = async (e) => {
     e.preventDefault();
     if (!depositData.toAccount || !depositData.amount) {
@@ -220,7 +220,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Helper to determine if an account ID belongs to the current user
+  
   const isMyAccount = (accId) => {
     if (!accId) return false;
     const cleanId = typeof accId === 'object' ? accId._id : accId;
@@ -230,7 +230,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#0A0C10] text-slate-100 font-sans pb-16">
       
-      {/* Top Navbar */}
+      {}
       <header className="sticky top-0 z-40 bg-[#12161F]/90 backdrop-blur-md border-b border-white/10 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           
@@ -248,7 +248,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* User Profile & Logout */}
+          {}
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
               <div className="text-sm font-semibold text-white flex items-center gap-2 justify-end">
@@ -275,10 +275,10 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Main Content Container */}
+      {}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 space-y-8">
         
-        {/* 1. ACCOUNTS OVERVIEW SECTION */}
+        {}
         <section className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -312,7 +312,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Accounts Grid */}
+          {}
           {accounts.length === 0 ? (
             <div className="p-8 rounded-2xl bg-[#12161F] border border-white/10 text-center space-y-3">
               <CreditCard size={36} className="mx-auto text-slate-500" />

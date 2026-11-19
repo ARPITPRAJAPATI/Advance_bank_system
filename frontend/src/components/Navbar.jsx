@@ -10,7 +10,7 @@ export default function Navbar({ isAuthenticated = false, onLogout }) {
     <header className="sticky top-0 z-50 w-full bg-[#0A0C10]/80 backdrop-blur-xl border-b border-white/[0.08]">
       <div className="max-w-7xl mx-auto px-6 sm:px-10 h-20 flex items-center justify-between">
         
-        {/* Brand Logo */}
+        {}
         <Link to="/" className="flex items-center gap-2 group">
           <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-sm group-hover:border-white/20 transition-all">
             ✦
@@ -20,7 +20,7 @@ export default function Navbar({ isAuthenticated = false, onLogout }) {
           </span>
         </Link>
 
-        {/* Desktop Navigation */}
+        {}
         <div className="hidden md:flex items-center gap-8">
           <Link to="/" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
             About
@@ -62,7 +62,7 @@ export default function Navbar({ isAuthenticated = false, onLogout }) {
           )}
         </div>
 
-        {/* Mobile Toggle */}
+        {}
         <button 
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="md:hidden p-2 text-slate-300 hover:text-white cursor-pointer"
@@ -71,7 +71,7 @@ export default function Navbar({ isAuthenticated = false, onLogout }) {
         </button>
       </div>
 
-      {/* Mobile Menu */}
+      {}
       {mobileMenuOpen && (
         <div className="md:hidden bg-[#0A0C10] border-b border-white/10 px-6 py-6 space-y-4">
           <Link 
