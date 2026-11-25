@@ -4,27 +4,27 @@
 %%{init: {'flowchart': {'nodeSpacing': 24, 'rankSpacing': 34, 'padding': 10}}}%%
 graph LR
 
-  R1["⚛️ React 19 + UUID<br/>crypto.randomUUID()<br/>withCredentials: true"]
-  A1["🔑 Auth & Bootstrap<br/>bcrypt×12 · Auto-Admin<br/>POST /register & /login"]
-  G1["🧹 CORS & PII Redact<br/>Masks password, jwt,<br/>cvv, pin in Server Logs"]
-  L1["📒 Zero Balance Field<br/>No Mutable Balance Col<br/>Immutable pre() Hooks"]
+  R1["[1] ⚛️ React 19 + UUID<br/>crypto.randomUUID()<br/>withCredentials: true"]
+  A1["[4] 🔑 Auth & Bootstrap<br/>bcrypt×12 · Auto-Admin<br/>POST /register & /login"]
+  G1["[3] 🧹 CORS & PII Redact<br/>Masks password, jwt,<br/>cvv, pin in Server Logs"]
+  L1["[11] 📒 Zero Balance Field<br/>No Mutable Balance Col<br/>Immutable pre() Hooks"]
 
-  R2["⚡ Nginx 1.31 (:31100)<br/>try_files SPA Root<br/>Proxy /api → :3000"]
-  A2["🔐 HS256 JWT + Blacklist<br/>HttpOnly Cookie Verify<br/>30-Day Blacklist TTL"]
-  G2["🔁 Idempotency Guard<br/>Unique idempotencyKey<br/>Replay=200 · Diff=409"]
-  L2["👑 systemUser RBAC<br/>Initial Funds & Admin<br/>403 Non-System Block"]
+  R2["[2] ⚡ Nginx 1.31 (:31100)<br/>try_files SPA Root<br/>Proxy /api → :3000"]
+  A2["[5] 🔐 HS256 JWT + Blacklist<br/>HttpOnly Cookie Verify<br/>30-Day Blacklist TTL"]
+  G2["[7] 🔁 Idempotency Guard<br/>Unique idempotencyKey<br/>Replay=200 · Diff=409"]
+  L2["[12] 👑 systemUser RBAC<br/>Initial Funds & Admin<br/>403 Non-System Block"]
 
-  R3["🛡️ Routes & IDOR Filter<br/>/auth /accounts /tx /ai<br/>Query {_id, user: userId}"]
-  P3["✈️ Pre-Flight + ₹50k Cap<br/>Status == ACTIVE<br/>Daily Debit <= ₹50,000"]
-  L3["⚖️ Virtual Balance<br/>account.getBalance()<br/>Fresh ΣCR − ΣDR"]
+  R3["[6] 🛡️ Routes & IDOR Filter<br/>/auth /accounts /tx /ai<br/>Query {_id, user: userId}"]
+  P3["[8] ✈️ Pre-Flight + ₹50k Cap<br/>Status == ACTIVE<br/>Daily Debit <= ₹50,000"]
+  L3["[13] ⚖️ Virtual Balance<br/>account.getBalance()<br/>Fresh ΣCR − ΣDR"]
 
-  E4["🗄️ MongoDB ACID Session<br/>startTransaction()<br/>Error → abortTransaction()"]
-  L4["📒 Ledger Pair Commit<br/>Atomic CREDIT + DEBIT<br/>status = COMPLETED"]
-  RC4["🔄 Dual Reconciler<br/>Macro: ΣCR == ΣDR<br/>Micro: /admin/reconcile"]
+  E4["[9] 🗄️ MongoDB ACID Session<br/>startTransaction()<br/>Error → abortTransaction()"]
+  L4["[10] 📒 Ledger Pair Commit<br/>Atomic CREDIT + DEBIT<br/>status = COMPLETED"]
+  RC4["[14] 🔄 Dual Reconciler<br/>Macro: ΣCR == ΣDR<br/>Micro: /admin/reconcile"]
 
-  DB1[("🍃 Core Collections<br/>users · accounts<br/>status & user index")]
-  DB2[("💳 Financial Records<br/>transactions (idempKey)<br/>ledger (Immutable Pairs)")]
-  DB3["📧 Async & Sec Stores<br/>auditLog (setImmediate)<br/>Nodemailer · tokenBlacklist"]
+  DB1[("[15] 🍃 Core Collections<br/>users · accounts<br/>status & user index")]
+  DB2[("[16] 💳 Financial Records<br/>transactions (idempKey)<br/>ledger (Immutable Pairs)")]
+  DB3["[17] 📧 Async & Sec Stores<br/>auditLog (setImmediate)<br/>Nodemailer · tokenBlacklist"]
 
   R1 --> R2 --> R3 --> E4 --> DB2
   A1 --> A2 --> R3
