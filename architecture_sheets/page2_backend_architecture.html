@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>KubePay — Backend Core Banking Architecture (Page 2)</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 6mm 8mm;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      padding: 10px;
+    }
+    @media print {
+      body {
+        background-color: #ffffff;
+        padding: 0;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .sheet-container {
+        border: none !important;
+        box-shadow: none !important;
+        width: 281mm !important;
+        height: 196mm !important;
+        max-height: 196mm !important;
+        overflow: hidden !important;
+        page-break-inside: avoid;
+        page-break-after: always;
+      }
+    }
+    .no-print-bar {
+      max-width: 1100px;
+      margin: 0 auto 12px auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1e293b;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .print-btn {
+      background: #0ea5e9;
+      color: #fff;
+      border: none;
+      padding: 6px 16px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.2s;
+    }
+    .print-btn:hover {
+      background: #0284c7;
+    }
+    .sheet-container {
+      width: 281mm;
+      height: 196mm;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      display: flex;
+      flex-direction: column;
+      padding: 8mm 9mm 6mm 9mm;
+      position: relative;
+      overflow: hidden;
+    }
+    /* HEADER */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 5px;
+      margin-bottom: 7px;
+    }
+    .brand-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge-page {
+      background: #0f172a;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .subtitle {
+      font-size: 11px;
+      color: #475569;
+      font-weight: 500;
+      margin-top: 1px;
+    }
+    .meta-box {
+      text-align: right;
+      font-size: 10px;
+      color: #334155;
+      line-height: 1.35;
+    }
+    .meta-box strong {
+      color: #0f172a;
+    }
+
+    /* MAIN GRID (3 COLUMNS) */
+    .grid-container {
+      display: grid;
+      grid-template-columns: 1.05fr 1.65fr 1.1fr;
+      gap: 8px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* CARD STYLING */
+    .card {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #cbd5e1;
+    }
+    .bg-blue { background: #f0f9ff; color: #0369a1; border-color: #bae6fd; }
+    .bg-green { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+    .bg-purple { background: #faf5ff; color: #7e22ce; border-color: #e9d5ff; }
+    .bg-slate { background: #f8fafc; color: #1e293b; border-color: #e2e8f0; }
+
+    .card-body {
+      padding: 6px 8px;
+      flex: 1;
+      font-size: 9.5px;
+      line-height: 1.35;
+      color: #1e293b;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    /* INTERNAL BLOCKS */
+    .sub-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 4px 6px;
+    }
+    .sub-title {
+      font-weight: 700;
+      font-size: 9.5px;
+      color: #0f172a;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+    .tag {
+      font-size: 8px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+    .tag-blue { background: #e0f2fe; color: #0369a1; }
+    .tag-green { background: #dcfce7; color: #15803d; }
+    .tag-amber { background: #fef3c7; color: #b45309; }
+    .tag-red { background: #fee2e2; color: #b91c1c; }
+
+    /* FLOW DIAGRAM (SVG) */
+    .flow-svg-box {
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      border-radius: 4px;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* TABLE */
+    .schema-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.5px;
+      margin-top: 2px;
+    }
+    .schema-table th {
+      background: #f1f5f9;
+      color: #334155;
+      padding: 2px 4px;
+      text-align: left;
+      border: 1px solid #e2e8f0;
+      font-weight: 700;
+    }
+    .schema-table td {
+      padding: 2px 4px;
+      border: 1px solid #e2e8f0;
+      color: #1e293b;
+    }
+
+    /* BOTTOM FOOTER / CHEAT SHEET */
+    .footer-bar {
+      margin-top: 6px;
+      border-top: 1px solid #cbd5e1;
+      padding-top: 5px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      font-size: 8.5px;
+      color: #334155;
+      background: #f8fafc;
+      padding: 5px 8px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+    }
+    .footer-col strong {
+      color: #0f172a;
+      display: block;
+      margin-bottom: 1px;
+      font-size: 9px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="no-print-bar no-print">
+    <span>📄 <strong>KubePay Portfolio Sheet: Page 2 of 4 (Backend Core Banking Architecture)</strong></span>
+    <div>
+      <button class="print-btn" onclick="window.print()">🖨️ Print to A4 Landscape (Ctrl+P)</button>
+    </div>
+  </div>
+
+  <div class="sheet-container">
+    <!-- HEADER -->
+    <div class="header">
+      <div>
+        <div class="brand-title">
+          <span>🏛️ KubePay Core Banking Engine</span>
+          <span class="badge-page">Page 2 — Backend Architecture</span>
+        </div>
+        <div class="subtitle">Mission-Critical Double-Entry Financial Ledger • Multi-Document ACID Transactions • Zero-Trust Security</div>
+      </div>
+      <div class="meta-box">
+        <strong>Author:</strong> Arpit Prajapati | <strong>Role:</strong> SDE / Full-Stack & DevOps Engineer<br>
+        <strong>Tech Stack:</strong> Node.js 22 LTS, Express 5.2, MongoDB Atlas 8.0 (Replica Set), JWT, Bcrypt, Nodemailer
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="grid-container">
+
+      <!-- COL 1: CLIENT & INGRESS PERIMETER -->
+      <div class="card">
+        <div class="card-header bg-blue">
+          <span>1. CLIENT & INGRESS PERIMETER</span>
+          <span class="tag tag-blue">PORT 80 / 31100</span>
+        </div>
+        <div class="card-body">
+          <div class="sub-box">
+            <div class="sub-title">
+              <span>React 19.2 + Vite Client SPA</span>
+              <span class="tag tag-blue">Vercel/Nginx</span>
+            </div>
+            <div>• <strong>Virtual RuPay 3D Card:</strong> Mathematical spring physics (<code>TiltCard.jsx</code>) with mouse-tracking matrix transforms.</div>
+            <div>• <strong>Idempotency UUID:</strong> Browser generates <code>crypto.randomUUID()</code> before HTTP POST payload dispatch.</div>
+            <div>• <strong>Zero-Storage Security:</strong> Tokens are NEVER written to <code>localStorage</code> (XSS immune).</div>
+          </div>
+
+          <div class="sub-box">
+            <div class="sub-title">
+              <span>Nginx 1.31 Reverse Proxy & Ingress</span>
+              <span class="tag tag-blue">Reverse Proxy</span>
+            </div>
+            <div>• <strong>Route Splitting:</strong> Static SPA served at root <code>/</code>, dynamic routing passes <code>/api/*</code> to Express microservice.</div>
+            <div>• <strong>Header Enforcement:</strong> Injects <code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: DENY</code>, Strict CSP.</div>
+            <div>• <strong>CORS Shield:</strong> Explicit credentials reflection for <code>withCredentials: true</code> cross-origin session binding.</div>
+          </div>
+
+          <div class="sub-box">
+            <div class="sub-title">
+              <span>Security Perimeter & Session Guard</span>
+              <span class="tag tag-red">Auth Shield</span>
+            </div>
+            <div>• <strong>JWT Cookie Transport:</strong> Signed with <code>HS256</code> secret, delivered via <code>HttpOnly</code>, <code>Secure</code>, <code>SameSite: Lax</code>.</div>
+            <div>• <strong>Token Revocation Engine:</strong> On logout, token JTI hash written to <code>blacklisted_tokens</code> collection with TTL index.</div>
+            <div>• <strong>PII Sanitizer Middleware:</strong> Strips credit card CVVs and account passwords from all debug access logs.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COL 2: TRANSACTION CORE & ACID COORDINATOR -->
+      <div class="card">
+        <div class="card-header bg-green">
+          <span>2. CORE TRANSACTION ENGINE & ACID COORDINATOR</span>
+          <span class="tag tag-green">ATOMIC SESSIONS</span>
+        </div>
+        <div class="card-body">
+          
+          <!-- FLOW DIAGRAM SVG -->
+          <div class="flow-svg-box">
+            <svg viewBox="0 0 460 70" width="100%" height="70" style="font-family: inherit;">
+              <!-- Box 1 -->
+              <rect x="2" y="10" width="75" height="50" rx="4" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2"/>
+              <text x="39" y="27" text-anchor="middle" font-size="8" font-weight="700" fill="#0f172a">HTTP POST</text>
+              <text x="39" y="38" text-anchor="middle" font-size="7" fill="#475569">/transfer</text>
+              <text x="39" y="48" text-anchor="middle" font-size="6.5" fill="#0284c7">+ UUID Key</text>
+
+              <!-- Arrow 1 -->
+              <line x1="77" y1="35" x2="94" y2="35" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+              <!-- Box 2 -->
+              <rect x="96" y="10" width="80" height="50" rx="4" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.2"/>
+              <text x="136" y="25" text-anchor="middle" font-size="7.5" font-weight="700" fill="#1e40af">1. Idempotency</text>
+              <text x="136" y="36" text-anchor="middle" font-size="6.5" fill="#1e3a8a">Lock UUID (24h)</text>
+              <text x="136" y="46" text-anchor="middle" font-size="6.5" fill="#0369a1">Return cached if exists</text>
+
+              <!-- Arrow 2 -->
+              <line x1="176" y1="35" x2="193" y2="35" stroke="#64748b" stroke-width="1.5"/>
+
+              <!-- Box 3 -->
+              <rect x="195" y="10" width="115" height="50" rx="4" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.2"/>
+              <text x="252" y="23" text-anchor="middle" font-size="8" font-weight="700" fill="#15803d">2. MongoDB Session</text>
+              <text x="252" y="34" text-anchor="middle" font-size="6.5" fill="#14532d">withTransaction() ACID</text>
+              <text x="252" y="44" text-anchor="middle" font-size="6.5" fill="#166534">Pre-flight: Balance &gt;= ₹Amt</text>
+              <text x="252" y="53" text-anchor="middle" font-size="6.5" fill="#166534">Status: ACTIVE (Not Frozen)</text>
+
+              <!-- Arrow 3 -->
+              <line x1="310" y1="35" x2="327" y2="35" stroke="#64748b" stroke-width="1.5"/>
+
+              <!-- Box 4 -->
+              <rect x="329" y="10" width="128" height="50" rx="4" fill="#fef2f2" stroke="#ef4444" stroke-width="1.2"/>
+              <text x="393" y="23" text-anchor="middle" font-size="7.5" font-weight="700" fill="#991b1b">3. Double-Entry Commit</text>
+              <text x="393" y="34" text-anchor="middle" font-size="6.5" fill="#7f1d1d">Write DEBIT entry (Sender)</text>
+              <text x="393" y="44" text-anchor="middle" font-size="6.5" fill="#7f1d1d">Write CREDIT entry (Rcvr)</text>
+              <text x="393" y="53" text-anchor="middle" font-size="6.5" fill="#991b1b">Fail? ➔ 100% Rollback</text>
+            </svg>
+          </div>
+
+          <div class="sub-box">
+            <div class="sub-title">
+              <span>ACID Multi-Document Isolation Protocol</span>
+              <span class="tag tag-green">session.withTransaction()</span>
+            </div>
+            <div>• <strong>Read Concern:</strong> <code>majority</code> — guarantees reads reflect fully committed, non-orphaned node state.</div>
+            <div>• <strong>Write Concern:</strong> <code>w: "majority", j: true</code> — commits only after disk journal fsync across replica quorum.</div>
+            <div>• <strong>Race Condition Defense:</strong> In-flight requests lock sender account in memory/DB; parallel debit requests fail immediately with <code>409 Conflict</code> instead of causing negative balance overdraft.</div>
+          </div>
+
+          <div class="sub-box">
+            <div class="sub-title">
+              <span>Two-Layer Daily Reconciliation Engine</span>
+              <span class="tag tag-amber">Automated Audit</span>
+            </div>
+            <div>• <strong>Layer 1 (Runtime Invariant):</strong> Balance is a computed aggregate: <code>Balance = Σ(CREDIT) - Σ(DEBIT)</code>. Database stores zero raw mutable balances.</div>
+            <div>• <strong>Layer 2 (Nightly Reconciler):</strong> Cron job sweeps entire <code>ledger_records</code> database, compares mathematical totals against transaction tables, and raises immediate Slack/email alerts on any ledger drift.</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- COL 3: DATA PERSISTENCE & SCHEMAS -->
+      <div class="card">
+        <div class="card-header bg-purple">
+          <span>3. MULTI-DOC PERSISTENCE TIER</span>
+          <span class="tag tag-purple">MONGODB ATLAS</span>
+        </div>
+        <div class="card-body">
+          <div class="sub-box">
+            <div class="sub-title">
+              <span>Double-Entry Ledger Schema (Immutable)</span>
+              <span class="tag tag-purple">ledger_records</span>
+            </div>
+            <table class="schema-table">
+              <tr><th>Field</th><th>Type</th><th>Purpose / Constraint</th></tr>
+              <tr><td><code>account</code></td><td>ObjectId</td><td>Indexed ref to <code>accounts._id</code></td></tr>
+              <tr><td><code>type</code></td><td>Enum</td><td><code>DEBIT</code> (Outflow) | <code>CREDIT</code> (Inflow)</td></tr>
+              <tr><td><code>amount</code></td><td>Number</td><td>Strict positive decimal (₹)</td></tr>
+              <tr><td><code>transaction</code></td><td>ObjectId</td><td>Atomic parent transaction link</td></tr>
+              <tr><td><code>createdAt</code></td><td>Date</td><td>Immutable ISO 8601 audit timestamp</td></tr>
+            </table>
+          </div>
+
+          <div class="sub-box">
+            <div class="sub-title">
+              <span>Idempotency Cache Schema</span>
+              <span class="tag tag-blue">idempotency_keys</span>
+            </div>
+            <table class="schema-table">
+              <tr><th>Field</th><th>Type</th><th>Purpose / Constraint</th></tr>
+              <tr><td><code>key</code></td><td>String</td><td>Unique UUID v4 from client</td></tr>
+              <tr><td><code>response</code></td><td>Object</td><td>Cached HTTP status & transaction JSON</td></tr>
+              <tr><td><code>createdAt</code></td><td>Date</td><td>24h TTL automatic self-eviction index</td></tr>
+            </table>
+          </div>
+
+          <div class="sub-box">
+            <div class="sub-title">
+              <span>Asynchronous Notification Dispatcher</span>
+              <span class="tag tag-green">Nodemailer + OAuth2</span>
+            </div>
+            <div>• <strong>Non-blocking I/O:</strong> Receipt emails are dispatched asynchronously post-commit. SMTP network latency never delays customer HTTP responses.</div>
+            <div>• <strong>HTML Receipts:</strong> Includes transaction ref, UTC timestamp, masked sender/recipient, and cryptographically verified balance stamp.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- FOOTER BAR / INTERVIEW TALKING POINTS -->
+    <div class="footer-bar">
+      <div class="footer-col">
+        <strong>🎯 Interview Defense: Why Double-Entry Ledger?</strong>
+        "Single-table balances are vulnerable to silent update corruption. By recording immutable DEBIT/CREDIT pairs, every single rupee can be audited back to day 1. If sum of debits doesn't match sum of credits across the bank, the system halts."
+      </div>
+      <div class="footer-col">
+        <strong>⚡ Concurrency & Double-Spend Defense:</strong>
+        "We combine client-side UUID idempotency with MongoDB <code>session.withTransaction()</code> under <code>majority</code> write concern. Duplicate clicks replay the exact same receipt without re-running ledger operations."
+      </div>
+      <div class="footer-col">
+        <strong>🔒 Zero-Trust Auth Architecture:</strong>
+        "Tokens are housed strictly in <code>HttpOnly</code>, <code>SameSite: Lax</code> cookies — making JavaScript document access and XSS theft impossible. Explicit token blacklisting handles immediate server-side session revocation."
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
